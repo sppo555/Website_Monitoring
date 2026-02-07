@@ -11,8 +11,8 @@ RUN npm install
 # 複製所有源碼
 COPY . .
 
-# 執行 NestJS 編譯
-RUN npm run build
+# 執行 NestJS 編譯 (使用 || 確保錯誤退出碼被捕獲)
+RUN npm run build || (echo "Compilation failed. Contents of src/:" && ls -al src && exit 1)
 
 # 階段 2: 生產運行
 FROM node:20-alpine AS production
