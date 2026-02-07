@@ -8,6 +8,8 @@ import { AlertModule } from './alert/alert.module';
 import { AuthModule } from './auth/auth.module';
 import { AuditModule } from './audit/audit.module';
 import { AuditLog } from './audit/audit-log.entity';
+import { RetentionModule } from './retention/retention.module';
+import { RetentionConfig } from './retention/retention-config.entity';
 import { Site } from './site/site.entity';
 import { SiteCheckResult } from './site/site-check-result.entity';
 import { Group } from './group/group.entity';
@@ -28,7 +30,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
       username: process.env.POSTGRES_USER || 'user', 
       password: process.env.POSTGRES_PASSWORD || 'password', 
       database: process.env.POSTGRES_DB || 'monitoring_db',
-      entities: [Site, SiteCheckResult, Group, AlertConfig, User, AuditLog],
+      entities: [Site, SiteCheckResult, Group, AlertConfig, User, AuditLog, RetentionConfig],
       synchronize: true, // 開發環境使用
     }),
     
@@ -48,6 +50,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
     AlertModule,
     AuthModule,
     AuditModule,
+    RetentionModule,
   ],
   controllers: [],
   providers: [MonitoringScheduler, CheckerService], 

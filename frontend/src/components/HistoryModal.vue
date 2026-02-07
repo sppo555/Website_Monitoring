@@ -4,7 +4,10 @@
     <div class="modal-content">
       <div class="modal-header">
         <h2>📊 檢查歷史 — {{ domain }}</h2>
-        <span class="sub">最近 24 小時內共 {{ records.length }} 筆紀錄</span>
+        <div class="range-bar">
+          <button v-for="opt in rangeOptions" :key="opt.value" class="range-btn" :class="{ active: selectedRange === opt.value }" @click="changeRange(opt.value)">{{ opt.label }}</button>
+          <span class="sub">共 {{ records.length }} 筆紀錄</span>
+        </div>
       </div>
 
       <div v-if="loading" class="loading-sm">載入中...</div>
@@ -72,16 +75,32 @@ defineEmits<{ (e: 'close'): void }>();
 
 const loading = ref(true);
 const records = ref<CheckRecord[]>([]);
+const selectedRange = ref('24h');
+
+const rangeOptions = [
+  { label: '1h', value: '1h' },
+  { label: '12h', value: '12h' },
+  { label: '24h', value: '24h' },
+  { label: '1d', value: '1d' },
+  { label: '7d', value: '7d' },
+  { label: '14d', value: '14d' },
+];
 
 async function fetchHistory() {
+  loading.value = true;
   try {
-    const { data } = await axios.get<CheckRecord[]>(`/api/sites/${props.siteId}/history`);
+    const { data } = await axios.get<CheckRecord[]>(`/api/sites/${props.siteId}/history?range=${selectedRange.value}`);
     records.value = data;
   } catch (err) {
     console.error('獲取歷史失敗:', err);
   } finally {
     loading.value = false;
   }
+}
+
+function changeRange(range: string) {
+  selectedRange.value = range;
+  fetchHistory();
 }
 
 function formatTime(dateStr: string): string {
@@ -137,13 +156,31 @@ onMounted(fetchHistory);
   margin-bottom: 16px;
 }
 .modal-header h2 {
-  margin: 0;
+  margin: 0 0 8px 0;
   font-size: 1.3rem;
   color: #1a1a2e;
 }
+.range-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.range-btn {
+  padding: 4px 12px;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  background: #fff;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+.range-btn:hover { border-color: #4361ee; color: #4361ee; }
+.range-btn.active { background: #4361ee; color: #fff; border-color: #4361ee; }
 .sub {
   font-size: 0.82rem;
   color: #888;
+  margin-left: 8px;
 }
 .loading-sm, .empty {
   text-align: center;

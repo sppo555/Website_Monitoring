@@ -26,10 +26,12 @@
 | **失敗計數告警** | HTTP/HTTPS 連續失敗達到設定次數後才觸發告警（可自訂） |
 | **獨立檢查間隔** | HTTP/HTTPS 按秒設定（最低 60s），TLS/WHOIS 按天設定（最低 1 天） |
 | **批量分批處理** | 檢查時每 5 個域名一批，批次間延遲 2 秒，避免瞬間大量請求 |
-| **24h 檢查歷史** | 每個域名可查看最近 24 小時內所有檢查結果 |
+| **彈性檢查歷史** | 可選時間範圍查看檢查結果：1h / 12h / 24h / 1d / 7d / 14d |
 | **告警設定頁面** | 在網頁上設定 TG Bot Token、Chat ID、告警天數門檻（存入 DB） |
 | **自動排程** | 每分鐘執行排程，依各域名獨立間隔決定是否到期需檢查 |
 | **暫停/啟動** | 可單獨暫停或啟動任何域名的監控 |
+| **紀錄保留管理** | admin 可設定操作紀錄和監控紀錄的保留天數，打勾啟用後每日排程自動清理過期資料 |
+| **獨立頁面** | 儀表板、使用者管理、操作紀錄、Telegram 設定、系統設定 各為獨立頁面，透過導航列切換 |
 | **資料持久化** | 所有資料存入 PostgreSQL，Docker named volume 持久化，`docker compose down && up` 資料不遺失 |
 
 ## 架構設計
@@ -219,7 +221,7 @@ docker compose down
 | `POST` | `/sites/batch` | Admin/Editor | 批量匯入域名（擋掉重複） |
 | `GET` | `/sites` | JWT | 取得所有域名（含群組 + 最新檢查結果） |
 | `GET` | `/sites/:id` | JWT | 取得單一域名 |
-| `GET` | `/sites/:id/history` | JWT | 取得 24h 檢查歷史 |
+| `GET` | `/sites/:id/history?range=` | JWT | 取得檢查歷史（支援 1h/12h/24h/1d/7d/14d） |
 | `PUT` | `/sites/bulk` | Admin/Editor | 批量修改多個域名監控設定 |
 | `PUT` | `/sites/:id` | Admin/Editor | 更新域名設定 |
 | `PUT` | `/sites/:id/status/:status` | Admin/Editor | 切換監控狀態（active/paused） |
@@ -256,11 +258,18 @@ docker compose down
 
 ### Alert API
 
-| 方法 | 路徑 | 說明 |
-| :--- | :--- | :--- |
-| `GET` | `/alert/config` | 取得告警設定 |
-| `PUT` | `/alert/config` | 更新告警設定（僅 admin） |
-| `POST` | `/alert/test` | 發送 Telegram 測試訊息（僅 admin） |
+| 方法 | 路徑 | 權限 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/alert/config` | JWT | 取得告警設定 |
+| `PUT` | `/alert/config` | Admin | 更新告警設定 |
+| `POST` | `/alert/test` | Admin | 發送 Telegram 測試訊息 |
+
+### Retention API
+
+| 方法 | 路徑 | 權限 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/retention/config` | JWT | 取得紀錄保留設定 |
+| `PUT` | `/retention/config` | Admin | 更新紀錄保留設定（啟用/停用自動清理、設定保留天數） |
 
 ## Docker Compose 服務
 

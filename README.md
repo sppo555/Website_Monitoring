@@ -26,10 +26,12 @@ A lightweight website monitoring system built with full-stack TypeScript (NestJS
 | **Failure Count Alert** | Only trigger alert after configurable consecutive HTTP failures |
 | **Independent Intervals** | HTTP/HTTPS in seconds (min 60s), TLS/WHOIS in days (min 1 day) |
 | **Batch Processing** | Checks run in batches of 5, with 2s delay between batches |
-| **24h Check History** | View all check results from the last 24 hours per domain |
+| **Flexible Check History** | View check results with selectable time range: 1h / 12h / 24h / 1d / 7d / 14d |
 | **Alert Settings Page** | Configure TG Bot Token, Chat ID, and alert thresholds in the web UI (stored in DB) |
 | **Auto Scheduler** | Runs every minute, checks only domains whose interval has elapsed |
 | **Pause/Resume** | Pause or resume monitoring for any individual domain |
+| **Log Retention Management** | Admin can configure auto-cleanup of audit logs and check results (daily cron, configurable retention days) |
+| **Separate Pages** | Dashboard, User Management, Audit Logs, Telegram Settings, System Settings each on their own page with nav bar |
 | **Data Persistence** | All data stored in PostgreSQL with Docker named volumes — survives `docker compose down && up` |
 
 ## Architecture
@@ -219,7 +221,7 @@ To prevent overload when monitoring hundreds of domains:
 | `POST` | `/sites/batch` | Admin/Editor | Batch import domains (rejects duplicates) |
 | `GET` | `/sites` | JWT | Get all domains (with groups + latest result) |
 | `GET` | `/sites/:id` | JWT | Get a single domain |
-| `GET` | `/sites/:id/history` | JWT | Get 24h check history |
+| `GET` | `/sites/:id/history?range=` | JWT | Get check history (1h/12h/24h/1d/7d/14d) |
 | `PUT` | `/sites/bulk` | Admin/Editor | Bulk update monitoring settings |
 | `PUT` | `/sites/:id` | Admin/Editor | Update domain settings |
 | `PUT` | `/sites/:id/status/:status` | Admin/Editor | Toggle status (active/paused) |
@@ -256,11 +258,18 @@ To prevent overload when monitoring hundreds of domains:
 
 ### Alert API
 
-| Method | Path | Description |
-| :--- | :--- | :--- |
-| `GET` | `/alert/config` | Get alert configuration |
-| `PUT` | `/alert/config` | Update alert configuration (admin only) |
-| `POST` | `/alert/test` | Send Telegram test message (admin only) |
+| Method | Path | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/alert/config` | JWT | Get alert configuration |
+| `PUT` | `/alert/config` | Admin | Update alert configuration |
+| `POST` | `/alert/test` | Admin | Send Telegram test message |
+
+### Retention API
+
+| Method | Path | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/retention/config` | JWT | Get retention settings |
+| `PUT` | `/retention/config` | Admin | Update retention settings (enable/disable auto-cleanup, set retention days) |
 
 ## Docker Compose Services
 

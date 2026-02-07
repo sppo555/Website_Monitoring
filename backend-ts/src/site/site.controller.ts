@@ -1,5 +1,5 @@
 // backend-ts/src/site/site.controller.ts
-import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, Query } from '@nestjs/common';
 import { SiteService, SiteDto, BatchImportDto, BulkUpdateDto } from './site.service';
 import { Site } from './site.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -51,8 +51,18 @@ export class SiteController {
   }
 
   @Get(':id/history')
-  getHistory(@Param('id') id: string) {
-    return this.siteService.getHistory(id);
+  getHistory(@Param('id') id: string, @Query('range') range?: string) {
+    const hours = this.parseRange(range || '24h');
+    return this.siteService.getHistory(id, hours);
+  }
+
+  private parseRange(range: string): number {
+    const match = range.match(/^(\d+)(h|d)$/);
+    if (!match) return 24;
+    const val = parseInt(match[1], 10);
+    const unit = match[2];
+    const hours = unit === 'd' ? val * 24 : val;
+    return Math.min(hours, 14 * 24); // max 14 days
   }
 
   @Get(':id')

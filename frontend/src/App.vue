@@ -4,37 +4,49 @@
   <template v-else>
     <header>
       <div class="header-inner">
-        <h1>🖥 Alexander 網站監控系統</h1>
-        <p class="subtitle">即時監控 HTTP 狀態 · TLS 證書 · 域名到期</p>
-        <div class="header-user">
-          <span>{{ authState.user?.username }} ({{ authState.user?.role }})</span>
-          <button class="btn-header" @click="showChangePw = true">改密碼</button>
-          <button class="btn-header btn-logout" @click="handleLogout">登出</button>
+        <div class="header-top">
+          <h1>🖥 Alexander 網站監控系統</h1>
+          <div class="header-user">
+            <span>{{ authState.user?.username }} ({{ authState.user?.role }})</span>
+            <button class="btn-header" @click="showChangePw = true">改密碼</button>
+            <button class="btn-header" @click="handleLogout">登出</button>
+          </div>
         </div>
+        <nav class="nav-bar">
+          <button class="nav-btn" :class="{ active: currentPage === 'dashboard' }" @click="currentPage = 'dashboard'">📊 監控儀表板</button>
+          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'users' }" @click="currentPage = 'users'">👥 使用者管理</button>
+          <button class="nav-btn" :class="{ active: currentPage === 'audit' }" @click="currentPage = 'audit'">📋 操作紀錄</button>
+          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'telegram' }" @click="currentPage = 'telegram'">🔔 Telegram 設定</button>
+          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'retention' }" @click="currentPage = 'retention'">⚙️ 系統設定</button>
+        </nav>
       </div>
     </header>
     <main>
-      <UserManagement />
-      <AuditLogPanel />
-      <TelegramSettings v-if="isAdmin()" />
-      <SiteList />
+      <SiteList v-if="currentPage === 'dashboard'" />
+      <UserManagement v-else-if="currentPage === 'users'" />
+      <AuditLogPage v-else-if="currentPage === 'audit'" />
+      <TelegramSettings v-else-if="currentPage === 'telegram'" />
+      <RetentionSettings v-else-if="currentPage === 'retention'" />
     </main>
     <ChangePasswordModal v-if="showChangePw" @close="showChangePw = false" />
   </template>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import SiteList from './components/SiteList.vue';
 import TelegramSettings from './components/TelegramSettings.vue';
 import LoginPage from './components/LoginPage.vue';
 import UserManagement from './components/UserManagement.vue';
-import AuditLogPanel from './components/AuditLogPanel.vue';
+import AuditLogPage from './components/AuditLogPage.vue';
+import RetentionSettings from './components/RetentionSettings.vue';
 import ChangePasswordModal from './components/ChangePasswordModal.vue';
 import { authState, isLoggedIn, logout, isAdmin } from './auth';
 
 const loggedIn = ref(isLoggedIn());
 const showChangePw = ref(false);
+const currentPage = ref<'dashboard' | 'users' | 'audit' | 'telegram' | 'retention'>('dashboard');
+const userIsAdmin = computed(() => isAdmin());
 
 function onLoggedIn() {
   loggedIn.value = true;
@@ -49,31 +61,29 @@ function handleLogout() {
 <style scoped>
 header {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  padding: 28px 20px;
-  text-align: center;
+  padding: 16px 20px 0;
   color: #fff;
 }
 .header-inner {
   max-width: 1200px;
   margin: 0 auto;
 }
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+}
 h1 {
   font-weight: 700;
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   margin: 0;
 }
-.subtitle {
-  margin: 6px 0 0 0;
-  font-size: 0.9rem;
-  opacity: 0.7;
-}
 .header-user {
-  margin-top: 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 0.85rem;
+  gap: 10px;
+  font-size: 0.82rem;
   opacity: 0.9;
 }
 .btn-header {
@@ -83,10 +93,34 @@ h1 {
   border: 1px solid rgba(255,255,255,0.3);
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   transition: background 0.2s;
 }
 .btn-header:hover { background: rgba(255,255,255,0.25); }
+.nav-bar {
+  display: flex;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.nav-btn {
+  padding: 10px 18px;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.nav-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.nav-btn.active {
+  color: #fff;
+  border-bottom-color: #4361ee;
+  background: rgba(255,255,255,0.08);
+}
 main {
   max-width: 1200px;
   margin: 0 auto;
