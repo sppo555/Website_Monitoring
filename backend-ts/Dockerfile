@@ -31,6 +31,6 @@ EXPOSE 3000
 ENV POSTGRES_USER=user
 ENV POSTGRES_PASSWORD=password
 ENV POSTGRES_DB=monitoring_db
-ENV POSTGRES_HOST=db # 假設在 Docker Compose 網路中
+ENV POSTGRES_HOST=db
 
 CMD [ "node", "dist/main" ]
