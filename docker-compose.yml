@@ -1,0 +1,42 @@
+# Website_Monitoring_Project/docker-compose.yml
+version: '3.8'
+
+services:
+  # 1. NestJS 後端服務
+  api:
+    build: 
+      context: ./backend-ts
+      dockerfile: Dockerfile
+    container_name: monitoring_api
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+    # 環境變數繼承自 Dockerfile 或此處設置
+
+  # 2. PostgreSQL 資料庫服務
+  db:
+    image: postgres:15-alpine
+    container_name: monitoring_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: monitoring_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 3. Redis 快取/佇列服務
+  redis:
+    image: redis:7-alpine
+    container_name: monitoring_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
