@@ -1,6 +1,56 @@
-# 📋 網站監控系統 — 功能版本紀錄
+# 📋 SiteWatcher — 功能版本紀錄
 
 > 完整功能清單，按版本分類條列
+
+---
+
+## v4.0 — 國際化 + 域名驗證 + 即時檢查 + 批量群組編輯
+
+> 2026-02-08
+
+### 國際化（i18n）
+
+- **完整中英文切換**：所有前端元件的硬編碼中文文字替換為 i18n 鍵值
+- **翻譯檔**：`frontend/src/i18n/zh-TW.ts`（繁體中文）、`en.ts`（英文）
+- **語言切換按鈕**：導航列右上角 🌐 EN / CN 按鈕，偏好存入 `localStorage`
+- **應用名稱更名**：「Alexander 網站監控系統」→「SiteWatcher」
+
+### 域名格式驗證（RFC 952/1123）
+
+- **前端即時驗證**（`SiteFormModal`）：`computed` 即時偵測，紅框 + 錯誤訊息，按鈕自動停用
+- **前端批量驗證**（`BatchImportModal`）：JSON 批量匯入逐筆驗證域名格式
+- **後端驗證**（`SiteService.validateDomainFormat`）：`create()` 和 `batchCreate()` 都執行格式檢查
+- **驗證規則**：
+  - 僅允許 `a-z`、`0-9`、連字號 `-`、點 `.`
+  - 不可以連字號開頭或結尾
+  - 必須包含至少一個點
+  - 每段最多 63 字元，總長度最多 253 字元
+- **自動去除前綴**：`http://` / `https://` 在前後端都自動 strip
+
+### 新增即檢查
+
+- **CheckerModule**：將 `CheckerService` 封裝為獨立模組，方便跨模組注入
+- **即時檢查**（`CheckerService.checkSingleSite`）：新增網站後立即執行 HTTP + TLS + WHOIS 完整檢查（非阻塞）
+- **SiteController**：`create()` 和 `batchCreate()` 結束後觸發 `checkSingleSite`
+
+### 結果帶入（Carry Forward）
+
+- **排程檢查**：若本次只跑 HTTP（TLS/WHOIS 未到期），自動帶入上次已知的 `tlsDaysLeft` / `domainDaysLeft`
+- **效果**：儀表板不再出現空值「—」
+
+### 批量編輯支援群組
+
+- **BulkUpdateDto**：新增 `groupIds` 欄位
+- **BulkEditModal**：新增「所屬群組」checkbox，可將多個域名統一指派群組
+
+### 重複域名按鈕卡住修復
+
+- **SiteFormModal**：`defineExpose({ resetSubmitting })`
+- **SiteList**：`handleFormSubmit` catch 錯誤後呼叫 `formModalRef.value?.resetSubmitting()`
+
+### 文件更新
+
+- **README.md / README.zh-TW.md**：完整重寫，新增域名驗證規則、批量編輯含群組、i18n、即時檢查、carry forward、專案結構、時區說明等段落
 
 ---
 
@@ -149,72 +199,73 @@
 
 ---
 
-## 完整 API 列表（截至 v3.0）
+## 完整 API 列表（截至 v4.0）
 
 ### Sites API
 
 | 方法 | 路徑 | 權限 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/sites` | Admin/Editor | 新增監控域名（擋掉重複） |
-| `POST` | `/sites/batch` | Admin/Editor | 批量匯入域名（擋掉重複） |
-| `GET` | `/sites` | JWT | 取得所有域名（含群組 + 最新檢查結果） |
-| `GET` | `/sites/:id` | JWT | 取得單一域名 |
-| `GET` | `/sites/:id/history?range=` | JWT | 取得檢查歷史（支援 1h/12h/24h/1d/7d/14d） |
-| `PUT` | `/sites/bulk` | Admin/Editor | 批量修改多個域名監控設定 |
-| `PUT` | `/sites/:id` | Admin/Editor | 更新域名設定 |
-| `PUT` | `/sites/:id/status/:status` | Admin/Editor | 切換監控狀態（active/paused） |
-| `DELETE` | `/sites/:id` | Admin | 刪除域名 |
+| `POST` | `/api/sites` | Admin/Editor | 新增監控域名（驗證格式、擋掉重複、觸發即時檢查） |
+| `POST` | `/api/sites/batch` | Admin/Editor | 批量匯入域名（驗證格式、擋掉重複、觸發即時檢查） |
+| `GET` | `/api/sites` | JWT | 取得所有域名（含群組 + 最新檢查結果） |
+| `GET` | `/api/sites/:id` | JWT | 取得單一域名 |
+| `GET` | `/api/sites/:id/history?range=` | JWT | 取得檢查歷史（支援 1h/12h/24h/1d/7d/14d） |
+| `PUT` | `/api/sites/bulk` | Admin/Editor | 批量修改多個域名監控設定（含群組） |
+| `PUT` | `/api/sites/:id` | Admin/Editor | 更新域名設定 |
+| `PUT` | `/api/sites/:id/status/:status` | Admin/Editor | 切換監控狀態（active/paused） |
+| `DELETE` | `/api/sites/:id` | Admin | 刪除域名 |
 
 ### Groups API
 
 | 方法 | 路徑 | 權限 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/groups` | Admin | 建立群組 |
-| `GET` | `/groups` | JWT | 取得所有群組 |
-| `GET` | `/groups/:id` | JWT | 取得單一群組 |
-| `PUT` | `/groups/:id` | Admin | 更新群組 |
-| `DELETE` | `/groups/:id` | Admin | 刪除群組 |
+| `POST` | `/api/groups` | Admin | 建立群組 |
+| `GET` | `/api/groups` | JWT | 取得所有群組（含域名列表） |
+| `GET` | `/api/groups/:id` | JWT | 取得單一群組 |
+| `PUT` | `/api/groups/:id` | Admin | 更新群組 |
+| `DELETE` | `/api/groups/:id` | Admin | 刪除群組（域名變為未分組） |
 
 ### Auth API
 
 | 方法 | 路徑 | 權限 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/login` | 無 | 登入（回傳 JWT） |
-| `GET` | `/auth/me` | JWT | 取得目前使用者資訊 |
-| `PUT` | `/auth/change-password` | JWT | 修改自己的密碼 |
-| `GET` | `/auth/users` | Admin | 列出所有使用者 |
-| `POST` | `/auth/users` | Admin | 建立使用者 |
-| `PUT` | `/auth/users/:id` | Admin | 更新使用者 |
-| `DELETE` | `/auth/users/:id` | Admin | 刪除使用者 |
+| `POST` | `/api/auth/login` | 無 | 登入（回傳 JWT + 使用者資訊） |
+| `GET` | `/api/auth/me` | JWT | 取得目前使用者資訊 |
+| `PUT` | `/api/auth/change-password` | JWT | 修改自己的密碼 |
+| `GET` | `/api/auth/users` | Admin | 列出所有使用者 |
+| `POST` | `/api/auth/users` | Admin | 建立使用者 |
+| `PUT` | `/api/auth/users/:id` | Admin | 更新使用者（角色、密碼、群組） |
+| `DELETE` | `/api/auth/users/:id` | Admin | 刪除使用者 |
 
 ### Audit API
 
 | 方法 | 路徑 | 權限 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/audit` | Admin | 取得全部操作紀錄 |
-| `GET` | `/audit/me` | JWT | 取得自己的操作紀錄 |
+| `GET` | `/api/audit` | Admin | 取得全部操作紀錄 |
+| `GET` | `/api/audit/me` | JWT | 取得自己的操作紀錄 |
 
 ### Alert API
 
 | 方法 | 路徑 | 權限 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/alert/config` | JWT | 取得告警設定 |
-| `PUT` | `/alert/config` | Admin | 更新告警設定 |
-| `POST` | `/alert/test` | Admin | 發送 Telegram 測試訊息 |
+| `GET` | `/api/alert/config` | JWT | 取得告警設定 |
+| `PUT` | `/api/alert/config` | Admin | 更新告警設定 |
+| `POST` | `/api/alert/test` | Admin | 發送 Telegram 測試訊息 |
 
 ### Retention API（v3.0 新增）
 
 | 方法 | 路徑 | 權限 | 說明 |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/retention/config` | JWT | 取得紀錄保留設定 |
-| `PUT` | `/retention/config` | Admin | 更新紀錄保留設定 |
+| `GET` | `/api/retention/config` | JWT | 取得紀錄保留設定 |
+| `PUT` | `/api/retention/config` | Admin | 更新紀錄保留設定（啟用/停用自動清理、設定保留天數） |
 
 ---
 
 ## 技術棧
 
-- **後端**：NestJS, TypeORM, PostgreSQL, Redis, Passport.js, JWT, bcryptjs, axios, whois-json
-- **前端**：Vue 3, Vite, axios
-- **部署**：Docker Compose, Nginx（DB 與 Redis 使用 named volume 持久化）
+- **後端**：NestJS, TypeORM, PostgreSQL, Redis, Passport.js, JWT, bcryptjs, axios, whois-json, tls, @nestjs/schedule
+- **前端**：Vue 3（Composition API）, Vite, axios, 自訂 i18n
+- **部署**：Docker Compose, Nginx 反向代理, 持久化 named volume
 - **認證**：JWT + 角色權限控制（admin / allread / onlyedit / onlyread）
 - **告警**：Telegram Bot API
+- **時區**：後端存 UTC，前端依瀏覽器時區顯示
