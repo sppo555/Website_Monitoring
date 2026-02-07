@@ -1,0 +1,41 @@
+// backend-ts/src/app.module.ts
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SiteModule } from './site/site.module';
+import { Site } from './site/site.entity';
+import { SiteCheckResult } from './site/site-check-result.entity';
+import { MonitoringScheduler } from './scheduler/schedule.service';
+import { CheckerService } from './checker/checker.service';
+import { RedisModule } from '@nestjs-modules/ioredis'; 
+
+
+@Module({
+  imports: [
+    // 1. 資料庫連線配置
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: 5432,
+      username: process.env.POSTGRES_USER || 'user', 
+      password: process.env.POSTGRES_PASSWORD || 'password', 
+      database: process.env.POSTGRES_DB || 'monitoring_db',
+      entities: [Site, SiteCheckResult],
+      synchronize: true, // 開發環境使用
+    }),
+    
+    // 2. 排程模組
+    ScheduleModule.forRoot(),
+
+    // 3. Redis 配置 (使用環境變數或預設值)
+    RedisModule.forRoot({
+      type: 'single',
+      url: process.env.REDIS_URL || 'redis://redis:6379',
+    }),
+    
+    SiteModule,
+  ],
+  controllers: [],
+  providers: [MonitoringScheduler, CheckerService], 
+})
+export class AppModule {}

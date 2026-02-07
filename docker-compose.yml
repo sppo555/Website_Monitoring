@@ -1,7 +1,20 @@
-# Website_Monitoring_Project/docker-compose.yml
+# Website_Monitoring/docker-compose.yml
 version: '3.8'
 
 services:
+  # Nginx 反向代理服務
+  nginx:
+    image: nginx:alpine
+    container_name: monitoring_nginx
+    restart: always
+    ports:
+      - "80:80"  # 暴露 Nginx 的 80 埠
+    volumes:
+      # 將本地的 Nginx 配置映射到容器內
+      - ./nginx/songla.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api # 確保 API 服務先啟動
+
   # 1. NestJS 後端服務
   api:
     build: 
@@ -9,12 +22,10 @@ services:
       dockerfile: Dockerfile
     container_name: monitoring_api
     restart: always
-    ports:
-      - "3000:3000"
+    # ⚠️ 移除 ports 映射，只通過 Nginx 訪問
     depends_on:
       - db
       - redis
-    # 環境變數繼承自 Dockerfile 或此處設置
 
   # 2. PostgreSQL 資料庫服務
   db:
@@ -25,18 +36,14 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: monitoring_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    # 移除 ports 映射，只給 API 容器內部訪問
 
   # 3. Redis 快取/佇列服務
   redis:
     image: redis:7-alpine
     container_name: monitoring_redis
     restart: always
-    ports:
-      - "6379:6379"
+    # 移除 ports 映射
 
 volumes:
   postgres_data:
