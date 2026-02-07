@@ -22,7 +22,11 @@ services:
       dockerfile: Dockerfile
     container_name: monitoring_api
     restart: always
-    # ⚠️ 移除 ports 映射，只通過 Nginx 訪問
+    environment: # ⬅️ 新增此區塊，傳遞 DB 連線資訊
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: monitoring_db
+      POSTGRES_HOST: db
     depends_on:
       - db
       - redis
@@ -36,14 +40,12 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: monitoring_db
-    # 移除 ports 映射，只給 API 容器內部訪問
 
   # 3. Redis 快取/佇列服務
   redis:
     image: redis:7-alpine
     container_name: monitoring_redis
     restart: always
-    # 移除 ports 映射
 
 volumes:
   postgres_data:
