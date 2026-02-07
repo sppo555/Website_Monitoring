@@ -11,7 +11,7 @@ RUN npm install
 
 # 複製所有源碼和啟動腳本
 COPY . .
-COPY ../check-db.sh /usr/local/bin/check-db.sh
+COPY check-db.sh /usr/local/bin/check-db.sh
 RUN chmod +x /usr/local/bin/check-db.sh
 
 # 執行 NestJS 編譯
