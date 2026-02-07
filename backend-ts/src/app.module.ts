@@ -16,7 +16,7 @@ import { Group } from './group/group.entity';
 import { AlertConfig } from './alert/alert-config.entity';
 import { User } from './auth/user.entity';
 import { MonitoringScheduler } from './scheduler/schedule.service';
-import { CheckerService } from './checker/checker.service';
+import { CheckerModule } from './checker/checker.module';
 import { RedisModule } from '@nestjs-modules/ioredis'; 
 
 
@@ -51,8 +51,9 @@ import { RedisModule } from '@nestjs-modules/ioredis';
     AuthModule,
     AuditModule,
     RetentionModule,
+    CheckerModule,
   ],
   controllers: [],
-  providers: [MonitoringScheduler, CheckerService], 
+  providers: [MonitoringScheduler], 
 })
 export class AppModule {}

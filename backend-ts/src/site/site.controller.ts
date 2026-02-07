@@ -1,17 +1,21 @@
 // backend-ts/src/site/site.controller.ts
-import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException, UseGuards, Request, Query, Logger } from '@nestjs/common';
 import { SiteService, SiteDto, BatchImportDto, BulkUpdateDto } from './site.service';
 import { Site } from './site.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../auth/roles.guard';
 import { AuditService } from '../audit/audit.service';
+import { CheckerService } from '../checker/checker.service';
 
 @Controller('sites')
 @UseGuards(JwtAuthGuard)
 export class SiteController {
+  private readonly logger = new Logger(SiteController.name);
+
   constructor(
     private readonly siteService: SiteService,
     private readonly auditService: AuditService,
+    private readonly checkerService: CheckerService,
   ) {}
 
   @Post()
@@ -24,6 +28,11 @@ export class SiteController {
     }
     const result = await this.siteService.create(siteDto);
     await this.auditService.log(req.user.id, req.user.username, 'create_site', siteDto.domain);
+    // 非阻塞：立即觸發完整檢查（HTTP + TLS + WHOIS）
+    const site = await this.siteService.findOne(result.id);
+    this.checkerService.checkSingleSite(site).catch(err =>
+      this.logger.error(`即時檢查失敗 ${siteDto.domain}: ${err.message}`),
+    );
     return result;
   }
 
@@ -42,6 +51,13 @@ export class SiteController {
     }
     const result = await this.siteService.batchCreate(dto);
     await this.auditService.log(req.user.id, req.user.username, 'batch_create_sites', `${dto.sites.length} sites`);
+    // 非阻塞：逐一觸發即時完整檢查
+    for (const saved of result) {
+      const site = await this.siteService.findOne(saved.id);
+      this.checkerService.checkSingleSite(site).catch(err =>
+        this.logger.error(`即時檢查失敗 ${saved.domain}: ${err.message}`),
+      );
+    }
     return result;
   }
 

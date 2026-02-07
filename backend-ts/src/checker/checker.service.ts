@@ -159,10 +159,86 @@ export class CheckerService {
 
     // 只有真正執行了檢查才存結果和更新 site
     if (needHttpCheck || needTlsCheck || needWhoisCheck) {
+      // Carry forward：若本次未檢查 TLS/WHOIS，帶入上次已知的值
+      if (!needTlsCheck || !needWhoisCheck) {
+        const prev = await this.checkResultRepository.findOne({
+          where: { siteId: site.id },
+          order: { checkedAt: 'DESC' },
+        });
+        if (prev) {
+          if (!needTlsCheck && prev.tlsDaysLeft !== null) {
+            result.tlsDaysLeft = prev.tlsDaysLeft;
+          }
+          if (!needWhoisCheck && prev.domainDaysLeft !== null) {
+            result.domainDaysLeft = prev.domainDaysLeft;
+          }
+        }
+      }
       await this.checkResultRepository.save(result);
       await this.siteRepository.save(site);
       this.logger.log(`檢查完成: ${site.domain} - 健康: ${result.isHealthy}`);
     }
+  }
+
+  /**
+   * 立即對單一網站執行完整檢查（HTTP + TLS + WHOIS），用於新增網站時
+   */
+  async checkSingleSite(site: Site): Promise<void> {
+    const now = new Date();
+    const result = new SiteCheckResult();
+    result.siteId = site.id;
+    result.isHealthy = true;
+
+    // HTTP/HTTPS
+    if (site.checkHttp || site.checkHttps) {
+      if (site.checkHttp) {
+        try {
+          const httpStatus = await this.checkHttpRequest(`http://${site.domain}`);
+          result.httpStatus = httpStatus;
+          if (httpStatus >= 400) result.isHealthy = false;
+        } catch (err: any) {
+          result.isHealthy = false;
+          result.errorDetails = (result.errorDetails || '') + `HTTP Error: ${err.message}; `;
+        }
+      }
+      if (site.checkHttps) {
+        try {
+          const httpsStatus = await this.checkHttpRequest(`https://${site.domain}`);
+          if (result.httpStatus === null) result.httpStatus = httpsStatus;
+          if (httpsStatus >= 400) result.isHealthy = false;
+        } catch (err: any) {
+          result.isHealthy = false;
+          result.errorDetails = (result.errorDetails || '') + `HTTPS Error: ${err.message}; `;
+        }
+      }
+      site.lastHttpCheck = now;
+    }
+
+    // TLS
+    if (site.checkTls || site.checkHttps) {
+      try {
+        result.tlsDaysLeft = await this.checkTls(site.domain);
+        if (result.tlsDaysLeft !== null && result.tlsDaysLeft < 7) result.isHealthy = false;
+      } catch (err: any) {
+        result.errorDetails = (result.errorDetails || '') + `TLS Error: ${err.message}; `;
+      }
+      site.lastTlsCheck = now;
+    }
+
+    // WHOIS
+    if (site.checkWhois) {
+      try {
+        result.domainDaysLeft = await this.checkWhois(site.domain);
+        if (result.domainDaysLeft !== null && result.domainDaysLeft < 30) result.isHealthy = false;
+      } catch (err: any) {
+        result.errorDetails = (result.errorDetails || '') + `WHOIS Error: ${err.message}; `;
+      }
+      site.lastWhoisCheck = now;
+    }
+
+    await this.checkResultRepository.save(result);
+    await this.siteRepository.save(site);
+    this.logger.log(`即時檢查完成: ${site.domain} - 健康: ${result.isHealthy}`);
   }
 
   // === 間隔判斷 ===
