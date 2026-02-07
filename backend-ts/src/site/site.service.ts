@@ -192,9 +192,11 @@ export class SiteService implements OnModuleInit {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.sitesRepository.delete(id);
-    if (result.affected === 0) {
+    const site = await this.sitesRepository.findOne({ where: { id } });
+    if (!site) {
       throw new NotFoundException(`Site with ID ${id} not found`);
     }
+    await this.checkResultRepository.delete({ site: { id } });
+    await this.sitesRepository.delete(id);
   }
 }

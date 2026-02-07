@@ -1,8 +1,11 @@
 <!-- frontend/src/components/BulkEditModal.vue -->
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay">
     <div class="modal-content">
-      <h2>批量修改監控項目 ({{ siteIds.length }} 個域名)</h2>
+      <div class="modal-header-row">
+        <h2>批量修改監控項目 ({{ siteIds.length }} 個域名)</h2>
+        <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+      </div>
       <p class="hint">僅勾選的項目會被修改，未勾選的保持原值</p>
 
       <div class="bulk-field">
@@ -41,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 const props = defineProps<{ siteIds: string[] }>();
@@ -49,6 +52,10 @@ const emit = defineEmits<{ (e: 'close'): void; (e: 'saved'): void }>();
 
 const saving = ref(false);
 const error = ref('');
+
+function onEsc(e: KeyboardEvent) { if (e.key === 'Escape') emit('close'); }
+onMounted(() => window.addEventListener('keydown', onEsc));
+onUnmounted(() => window.removeEventListener('keydown', onEsc));
 const fields = reactive({
   checkHttp: { enabled: false, value: true },
   checkHttps: { enabled: false, value: true },
@@ -83,7 +90,10 @@ async function save() {
 <style scoped>
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .modal-content { background: #fff; border-radius: 12px; padding: 28px; width: 480px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-.modal-content h2 { margin: 0 0 8px 0; font-size: 1.2rem; color: #1a1a2e; }
+.modal-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.modal-header-row h2 { margin: 0; font-size: 1.2rem; color: #1a1a2e; }
+.btn-close { background: none; border: none; font-size: 1.6rem; color: #999; cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1; transition: all 0.2s; }
+.btn-close:hover { background: #f0f0f0; color: #333; }
 .hint { font-size: 0.82rem; color: #888; margin: 0 0 20px 0; }
 .bulk-field { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .bulk-field label { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; min-width: 150px; cursor: pointer; }

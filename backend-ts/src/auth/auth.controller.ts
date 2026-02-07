@@ -1,5 +1,5 @@
 // backend-ts/src/auth/auth.controller.ts
-import { Controller, Post, Get, Put, Delete, Body, Param, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Put, Delete, Body, Param, UseGuards, Request, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { AuthService, CreateUserDto, UpdateUserDto } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RolesGuard, Roles } from './roles.guard';
@@ -7,6 +7,8 @@ import { AuditService } from '../audit/audit.service';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger('AuthController');
+
   constructor(
     private readonly authService: AuthService,
     private readonly auditService: AuditService,
@@ -15,9 +17,14 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: { username: string; password: string }) {
-    const result = await this.authService.login(body.username, body.password);
-    await this.auditService.log(result.user.id, result.user.username, 'login');
-    return result;
+    try {
+      const result = await this.authService.login(body.username, body.password);
+      await this.auditService.log(result.user.id, result.user.username, 'login_success');
+      return result;
+    } catch (err) {
+      this.logger.warn(JSON.stringify({ action: 'login_failed', username: body.username }));
+      throw err;
+    }
   }
 
   @Get('me')

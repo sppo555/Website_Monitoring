@@ -1,8 +1,11 @@
 <!-- frontend/src/components/ChangePasswordModal.vue -->
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay">
     <div class="modal-content">
-      <h2>🔑 修改密碼</h2>
+      <div class="modal-header-row">
+        <h2>🔑 修改密碼</h2>
+        <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+      </div>
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
           <label>舊密碼</label>
@@ -28,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 const emit = defineEmits<{ (e: 'close'): void }>();
@@ -39,6 +42,10 @@ const confirmPassword = ref('');
 const error = ref('');
 const success = ref('');
 const saving = ref(false);
+
+function onEsc(e: KeyboardEvent) { if (e.key === 'Escape') emit('close'); }
+onMounted(() => window.addEventListener('keydown', onEsc));
+onUnmounted(() => window.removeEventListener('keydown', onEsc));
 
 async function handleSubmit() {
   error.value = '';
@@ -73,7 +80,10 @@ async function handleSubmit() {
 <style scoped>
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .modal-content { background: #fff; border-radius: 12px; padding: 28px; width: 400px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
-.modal-content h2 { margin: 0 0 20px 0; font-size: 1.2rem; color: #1a1a2e; }
+.modal-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.modal-header-row h2 { margin: 0; font-size: 1.2rem; color: #1a1a2e; }
+.btn-close { background: none; border: none; font-size: 1.6rem; color: #999; cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1; transition: all 0.2s; }
+.btn-close:hover { background: #f0f0f0; color: #333; }
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: #555; font-weight: 500; }
 .form-group input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }

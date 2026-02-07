@@ -1,11 +1,18 @@
 <!-- frontend/src/components/HistoryModal.vue -->
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h2>📊 檢查歷史 — {{ domain }}</h2>
+        <div class="modal-title-row">
+          <h2>📊 檢查歷史 — {{ domain }}</h2>
+          <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+        </div>
         <div class="range-bar">
-          <button v-for="opt in rangeOptions" :key="opt.value" class="range-btn" :class="{ active: selectedRange === opt.value }" @click="changeRange(opt.value)">{{ opt.label }}</button>
+          <button v-for="opt in rangeOptions" :key="opt.value" class="range-btn" :class="{ active: selectedRange === opt.value && !customActive }" @click="customActive = false; changeRange(opt.value)">{{ opt.label }}</button>
+          <div class="custom-range">
+            <input v-model="customInput" class="custom-input" placeholder="例: 2h, 3d" @keydown.enter="applyCustom" />
+            <button class="range-btn" :class="{ active: customActive }" @click="applyCustom">自訂</button>
+          </div>
           <span class="sub">共 {{ records.length }} 筆紀錄</span>
         </div>
       </div>
@@ -53,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 interface CheckRecord {
@@ -71,11 +78,13 @@ const props = defineProps<{
   domain: string;
 }>();
 
-defineEmits<{ (e: 'close'): void }>();
+const emit = defineEmits<{ (e: 'close'): void }>();
 
 const loading = ref(true);
 const records = ref<CheckRecord[]>([]);
 const selectedRange = ref('24h');
+const customInput = ref('');
+const customActive = ref(false);
 
 const rangeOptions = [
   { label: '1h', value: '1h' },
@@ -102,6 +111,21 @@ function changeRange(range: string) {
   selectedRange.value = range;
   fetchHistory();
 }
+
+function applyCustom() {
+  const v = customInput.value.trim();
+  if (!v) return;
+  if (!/^\d+(h|d)$/.test(v)) { alert('格式範例: 2h, 3d, 48h（最大 14d）'); return; }
+  customActive.value = true;
+  selectedRange.value = v;
+  fetchHistory();
+}
+
+function onEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape') emit('close');
+}
+onMounted(() => window.addEventListener('keydown', onEsc));
+onUnmounted(() => window.removeEventListener('keydown', onEsc));
 
 function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
@@ -155,10 +179,49 @@ onMounted(fetchHistory);
 .modal-header {
   margin-bottom: 16px;
 }
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
 .modal-header h2 {
-  margin: 0 0 8px 0;
+  margin: 0;
   font-size: 1.3rem;
   color: #1a1a2e;
+}
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+.btn-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+.custom-range {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+.custom-input {
+  width: 70px;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  font-size: 0.78rem;
+  text-align: center;
+  outline: none;
+}
+.custom-input:focus {
+  border-color: #4361ee;
 }
 .range-bar {
   display: flex;

@@ -1,24 +1,30 @@
 // backend-ts/src/group/group.controller.ts
-import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException, UseGuards, Request } from '@nestjs/common';
 import { GroupService, GroupDto } from './group.service';
 import { Group } from './group.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../auth/roles.guard';
+import { AuditService } from '../audit/audit.service';
 
 @Controller('groups')
 @UseGuards(JwtAuthGuard)
 export class GroupController {
-  constructor(private readonly groupService: GroupService) {}
+  constructor(
+    private readonly groupService: GroupService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
   @Roles('admin')
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: GroupDto): Promise<Group> {
+  async create(@Request() req: any, @Body() dto: GroupDto): Promise<Group> {
     if (!dto.name) {
       throw new BadRequestException('Group name is required');
     }
-    return this.groupService.create(dto);
+    const result = await this.groupService.create(dto);
+    await this.auditService.log(req.user.id, req.user.username, 'create_group', dto.name);
+    return result;
   }
 
   @Get()
@@ -34,15 +40,19 @@ export class GroupController {
   @Put(':id')
   @UseGuards(RolesGuard)
   @Roles('admin')
-  update(@Param('id') id: string, @Body() dto: GroupDto): Promise<Group> {
-    return this.groupService.update(id, dto);
+  async update(@Request() req: any, @Param('id') id: string, @Body() dto: GroupDto): Promise<Group> {
+    const result = await this.groupService.update(id, dto);
+    await this.auditService.log(req.user.id, req.user.username, 'update_group', result.name);
+    return result;
   }
 
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('admin')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string): Promise<void> {
-    return this.groupService.remove(id);
+  async remove(@Request() req: any, @Param('id') id: string): Promise<void> {
+    const group = await this.groupService.findOne(id);
+    await this.groupService.remove(id);
+    await this.auditService.log(req.user.id, req.user.username, 'delete_group', group.name);
   }
 }

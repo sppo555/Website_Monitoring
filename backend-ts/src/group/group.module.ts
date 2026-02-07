@@ -4,9 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Group } from './group.entity';
 import { GroupService } from './group.service';
 import { GroupController } from './group.controller';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Group])],
+  imports: [TypeOrmModule.forFeature([Group]), AuditModule],
   controllers: [GroupController],
   providers: [GroupService],
   exports: [GroupService],

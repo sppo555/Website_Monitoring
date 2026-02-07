@@ -1,8 +1,11 @@
 <!-- frontend/src/components/SiteFormModal.vue -->
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay">
     <div class="modal-content">
-      <h2>{{ isEdit ? '編輯監控網站' : '新增監控網站' }}</h2>
+      <div class="modal-header-row">
+        <h2>{{ isEdit ? '編輯監控網站' : '新增監控網站' }}</h2>
+        <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+      </div>
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="domain">域名</label>
@@ -94,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { reactive, ref, onMounted, onUnmounted } from 'vue';
 
 interface GroupItem {
   id: string;
@@ -151,6 +154,12 @@ async function handleSubmit() {
   if (form.checkHttps) form.checkTls = true;
   emit('submit', { ...form });
 }
+
+function onEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape') emit('close');
+}
+onMounted(() => window.addEventListener('keydown', onEsc));
+onUnmounted(() => window.removeEventListener('keydown', onEsc));
 </script>
 
 <style scoped>
@@ -173,10 +182,31 @@ async function handleSubmit() {
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
-.modal-content h2 {
-  margin: 0 0 24px 0;
+.modal-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.modal-header-row h2 {
+  margin: 0;
   font-size: 1.4rem;
   color: #1a1a2e;
+}
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+.btn-close:hover {
+  background: #f0f0f0;
+  color: #333;
 }
 .form-group {
   margin-bottom: 16px;
