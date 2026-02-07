@@ -1,0 +1,88 @@
+<!-- frontend/src/components/ChangePasswordModal.vue -->
+<template>
+  <div class="modal-overlay" @click.self="$emit('close')">
+    <div class="modal-content">
+      <h2>🔑 修改密碼</h2>
+      <form @submit.prevent="handleSubmit">
+        <div class="form-group">
+          <label>舊密碼</label>
+          <input v-model="oldPassword" type="password" required />
+        </div>
+        <div class="form-group">
+          <label>新密碼</label>
+          <input v-model="newPassword" type="password" required minlength="4" />
+        </div>
+        <div class="form-group">
+          <label>確認新密碼</label>
+          <input v-model="confirmPassword" type="password" required />
+        </div>
+        <div v-if="error" class="error-msg">{{ error }}</div>
+        <div v-if="success" class="success-msg">{{ success }}</div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-cancel" @click="$emit('close')">取消</button>
+          <button type="submit" class="btn btn-save" :disabled="saving">{{ saving ? '儲存中...' : '修改密碼' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import axios from 'axios';
+
+const emit = defineEmits<{ (e: 'close'): void }>();
+
+const oldPassword = ref('');
+const newPassword = ref('');
+const confirmPassword = ref('');
+const error = ref('');
+const success = ref('');
+const saving = ref(false);
+
+async function handleSubmit() {
+  error.value = '';
+  success.value = '';
+  if (newPassword.value !== confirmPassword.value) {
+    error.value = '新密碼與確認密碼不一致';
+    return;
+  }
+  if (newPassword.value.length < 4) {
+    error.value = '新密碼至少需要 4 個字元';
+    return;
+  }
+  saving.value = true;
+  try {
+    await axios.put('/api/auth/change-password', {
+      oldPassword: oldPassword.value,
+      newPassword: newPassword.value,
+    });
+    success.value = '密碼修改成功！';
+    oldPassword.value = '';
+    newPassword.value = '';
+    confirmPassword.value = '';
+    setTimeout(() => emit('close'), 1500);
+  } catch (err: any) {
+    error.value = err.response?.data?.message || '修改失敗';
+  } finally {
+    saving.value = false;
+  }
+}
+</script>
+
+<style scoped>
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-content { background: #fff; border-radius: 12px; padding: 28px; width: 400px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.modal-content h2 { margin: 0 0 20px 0; font-size: 1.2rem; color: #1a1a2e; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: #555; font-weight: 500; }
+.form-group input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
+.form-group input:focus { border-color: #4361ee; outline: none; }
+.error-msg { color: #e74c3c; font-size: 0.85rem; margin-bottom: 10px; }
+.success-msg { color: #2ecc71; font-size: 0.85rem; margin-bottom: 10px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.btn { padding: 8px 18px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: 500; }
+.btn-cancel { background: #f0f0f0; color: #555; }
+.btn-save { background: #4361ee; color: #fff; }
+.btn-save:disabled { opacity: 0.6; }
+</style>

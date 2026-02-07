@@ -15,6 +15,18 @@ services:
     depends_on:
       - api # 確保 API 服務先啟動
 
+  # 0. Vue 3 前端開發伺服器 (獨立運行)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: monitoring_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+
   # 1. NestJS 後端服務
   api:
     build: 
@@ -40,12 +52,17 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: monitoring_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   # 3. Redis 快取/佇列服務
   redis:
     image: redis:7-alpine
     container_name: monitoring_redis
     restart: always
+    volumes:
+      - redis_data:/data
 
 volumes:
   postgres_data:
+  redis_data:

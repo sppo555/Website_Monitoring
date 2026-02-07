@@ -3,8 +3,16 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SiteModule } from './site/site.module';
+import { GroupModule } from './group/group.module';
+import { AlertModule } from './alert/alert.module';
+import { AuthModule } from './auth/auth.module';
+import { AuditModule } from './audit/audit.module';
+import { AuditLog } from './audit/audit-log.entity';
 import { Site } from './site/site.entity';
 import { SiteCheckResult } from './site/site-check-result.entity';
+import { Group } from './group/group.entity';
+import { AlertConfig } from './alert/alert-config.entity';
+import { User } from './auth/user.entity';
 import { MonitoringScheduler } from './scheduler/schedule.service';
 import { CheckerService } from './checker/checker.service';
 import { RedisModule } from '@nestjs-modules/ioredis'; 
@@ -20,7 +28,7 @@ import { RedisModule } from '@nestjs-modules/ioredis';
       username: process.env.POSTGRES_USER || 'user', 
       password: process.env.POSTGRES_PASSWORD || 'password', 
       database: process.env.POSTGRES_DB || 'monitoring_db',
-      entities: [Site, SiteCheckResult],
+      entities: [Site, SiteCheckResult, Group, AlertConfig, User, AuditLog],
       synchronize: true, // 開發環境使用
     }),
     
@@ -36,6 +44,10 @@ import { RedisModule } from '@nestjs-modules/ioredis';
     }),
     
     SiteModule,
+    GroupModule,
+    AlertModule,
+    AuthModule,
+    AuditModule,
   ],
   controllers: [],
   providers: [MonitoringScheduler, CheckerService], 

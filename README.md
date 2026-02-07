@@ -1,114 +1,282 @@
-# 網站監控系統 (Website Monitoring System)
+# 🖥 Website Monitoring System
 
-## 專案簡介
+> **[📖 中文版文件 (Chinese Documentation)](./README.zh-TW.md)**
 
-這是一個基於全棧 TypeScript 技術棧 (NestJS + Vue 3) 和 Docker 容器化技術實現的輕量級網站監控系統。
+A lightweight website monitoring system built with full-stack TypeScript (NestJS + Vue 3) and Docker, featuring user authentication & RBAC, multi-group domain management, multi-protocol monitoring, Telegram alerts, audit logging, and batch processing.
 
-**核心目標：**
-1.  即時監控網站的 HTTP/HTTPS 連線狀態。
-2.  檢查 HTTPS/TLS 證書的剩餘過期天數。
-3.  檢查網站域名的 WHOIS 剩餘過期天數。
+## Features
 
-## 架構設計
+| Feature | Description |
+| :--- | :--- |
+| **User Authentication** | JWT-based login, default admin account (admin/admin) |
+| **Role-Based Access** | 4 roles: `admin` (full access), `allread` (read all), `onlyedit` (edit assigned groups), `onlyread` (read assigned groups) |
+| **Change Password** | All users can change their own password; admin can change any user's password |
+| **Audit Logging** | All operations (login, CRUD, password changes) are logged; admin views all logs, users view their own |
+| **HTTP Monitoring** | Check target domain HTTP connection status codes |
+| **HTTPS Monitoring** | Check HTTPS status (enabling HTTPS auto-enables TLS check) |
+| **TLS Certificate Check** | Connect to port 443, check SSL certificate remaining days |
+| **WHOIS Domain Expiry** | Query domain WHOIS info, calculate registration expiry |
+| **Multi-Group Domains** | A domain can belong to multiple groups simultaneously (many-to-many) |
+| **Domain Search** | Search bar to filter domains within the selected group |
+| **Bulk Edit** | Select multiple domains via checkbox and modify monitoring settings in bulk |
+| **Independent Toggles** | Each domain can independently enable/disable HTTP, HTTPS, TLS, WHOIS |
+| **Duplicate Prevention** | Rejects duplicate domain entries on create and batch import |
+| **JSON Batch Import** | Import multiple domains at once via JSON, with group assignment |
+| **Telegram Alerts** | Auto-send Telegram notifications for TLS/domain expiry or HTTP failures; settings stored in DB |
+| **Failure Count Alert** | Only trigger alert after configurable consecutive HTTP failures |
+| **Independent Intervals** | HTTP/HTTPS in seconds (min 60s), TLS/WHOIS in days (min 1 day) |
+| **Batch Processing** | Checks run in batches of 5, with 2s delay between batches |
+| **24h Check History** | View all check results from the last 24 hours per domain |
+| **Alert Settings Page** | Configure TG Bot Token, Chat ID, and alert thresholds in the web UI (stored in DB) |
+| **Auto Scheduler** | Runs every minute, checks only domains whose interval has elapsed |
+| **Pause/Resume** | Pause or resume monitoring for any individual domain |
+| **Data Persistence** | All data stored in PostgreSQL with Docker named volumes — survives `docker compose down && up` |
 
-本專案採用微服務的理念進行設計，將高 I/O 檢查任務、API 服務和資料持久化分離。
+## Architecture
 
-| 組件 | 技術棧 | 職責 |
+```
+┌─────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Nginx     │───▶│  NestJS API  │───▶│  PostgreSQL  │
+│  (Port 80)  │    │  (Port 3000) │    │              │
+└─────────────┘    └──────┬───────┘    └──────────────┘
+                          │
+┌─────────────┐           │            ┌──────────────┐
+│  Vue 3 SPA  │           └───────────▶│    Redis     │
+│ (Port 5173) │                        │              │
+└─────────────┘                        └──────────────┘
+```
+
+| Container | Stack | Purpose |
 | :--- | :--- | :--- |
-| **API/Scheduler** | NestJS (TypeScript) | 提供 REST API (CRUD Site)、排程器 (Cron) 執行檢查任務、結果持久化 (PostgreSQL)。 |
-| **Database** | PostgreSQL | 儲存待監控網站列表 (`sites`) 和歷史檢查結果 (`site_check_results`)。 |
-| **Cache/Queue** | Redis | **預留接口。** 可用於未來實現 Rate Limiting 或分散式任務佇列。 |
-| **Frontend** | Vue 3 + TypeScript | 網站儀表板 (Dashboard) 和網站管理界面。 |
+| **nginx** | Nginx Alpine | Reverse proxy, forwards API requests to backend |
+| **api** | NestJS + TypeORM | REST API, scheduler, checker service, TG alerts |
+| **frontend** | Vue 3 + Vite | Frontend dev server (runs independently) |
+| **db** | PostgreSQL 15 | Data persistence |
+| **redis** | Redis 7 | Reserved for caching/queue |
 
-## 核心功能清單
+> ⚡ Frontend and backend containers run **completely independently**.
 
-| 功能 | 描述 | 實現狀態 |
-| :--- | :--- | :--- |
-| **HTTP/HTTPS 檢查** | 檢查目標 URL 是否返回正常的狀態碼 (e.g., 2xx/3xx)。 | ✅ 實作 (NestJS `CheckerService`) |
-| **TLS 檢查** | 連線到 443 埠，獲取證書資訊，計算剩餘過期天數。 | ✅ 實作 (NestJS `CheckerService`) |
-| **WHOIS 檢查** | 查詢域名，獲取域名註冊的剩餘過期天數。 | ✅ 實作 (NestJS `CheckerService` - 依賴 `whois-json`) |
-| **網站管理 API** | CRUD 接口，用於新增、修改、刪除、暫停監控網站。 | ✅ 實作 (NestJS `SiteController`) |
-| **自動排程** | 每分鐘自動運行一次檢查任務。 | ✅ 實作 (NestJS `MonitoringScheduler`) |
+## Quick Start
 
-## 快速啟動 (Quick Start)
+### Prerequisites
 
-本專案強烈依賴 Docker 和 Docker Compose 進行環境配置。
+- Docker & Docker Compose
 
-### 步驟 1: 啟動基礎服務 (PostgreSQL & Redis)
-
-請確保您已安裝 Docker 和 Docker Compose。在專案根目錄 (`Website_Monitoring`) 執行：
+### Start All Services
 
 ```bash
-# 啟動 PostgreSQL, Redis 和 NestJS API 服務
+cd Website_Monitoring
 docker compose up --build -d
 ```
 
-第一次運行時，此命令會：
-1.  構建 `backend-ts` 服務的 Docker 映像 (Image)。
-2.  啟動 `db` (PostgreSQL) 和 `redis` 容器。
-3.  啟動 `api` (NestJS) 容器，它將自動連線到資料庫並運行 TypeORM 同步。
+Once running:
 
-### 步驟 2: 運行前端開發伺服器
+| Service | URL |
+| :--- | :--- |
+| Frontend Dashboard | http://localhost:5173 |
+| API (via Nginx) | http://localhost/sites |
 
-前端服務使用 Vite 開發伺服器，不建議在 Docker 中運行：
-
-```bash
-# 進入前端目錄
-cd frontend
-
-# 安裝依賴 (如果尚未安裝)
-npm install
-
-# 啟動開發伺服器
-npm run dev 
-# 訪問 http://localhost:5173/ 查看儀表板
-```
-
-### 步驟 3: 測試 API (添加一個監控網站)
-
-服務啟動後，您可以透過 API 接口添加一個新的監控目標：
+### Stop Services
 
 ```bash
-# 使用 cURL 或 Postman
-curl -X POST http://localhost:3000/sites \
--H 'Content-Type: application/json' \
--d '{
-    "url": "https://www.google.com",
-    "checkIntervalSeconds": 300,
-    "checkTls": true,
-    "checkWhois": false
-}'
+docker compose down
 ```
 
----
+## Usage
 
-## 🚧 交接狀態與已知問題 (Handover Status)
+### 1. Add a Monitored Domain
 
-本專案已完成核心功能程式碼和容器化配置，但前端構建步驟遇到了環境隔離問題。
+Click "+ New Site", enter a domain (e.g. `www.google.com`) — **no** `http://` or `https://` prefix needed.
 
-### 1. 專案進度摘要
+Select monitoring protocols:
+- **HTTP** — Monitor HTTP connection status
+- **HTTPS** — Monitor HTTPS status (auto-enables TLS certificate check)
+- **TLS** — Standalone TLS certificate expiry check
+- **WHOIS** — Domain WHOIS registration expiry check
 
-- **後端 (NestJS)：** 程式碼完成 100%。功能：CRUD API, Scheduler, Checker 邏輯。
-- **前端 (Vue 3)：** 程式碼完成 80%。功能：網站列表組件 (`SiteList.vue`)。**尚未完成**：網站新增/編輯模態框、單一網站歷史趨勢圖。
-- **版本控制：** 尚未 Push 到 GitHub。**需要配置 Git 身份才能完成。**
-- **環境：** 已創建 `docker-compose.yml` 和 `Dockerfile`，確保專案可容器化啟動。
+Configure intervals and alert threshold:
+- **HTTP/HTTPS Interval** — Check frequency in seconds (min 60s, default 300s)
+- **TLS Check Interval** — Check frequency in days (min 1, default 1)
+- **WHOIS Check Interval** — Check frequency in days (min 1, default 1)
+- **Failure Threshold** — Consecutive HTTP failures before alerting (default 3)
 
-### 2. 開發決策與技術陷阱 (參見 DEVELOPER_NOTES.md)
+> Duplicate domains are rejected — each domain can only be added once.
 
-| 問題 | 妥協/風險 | 解決方案 |
+### 2. Domain Groups
+
+Type a group name and press `+` to create a new group. Domains can belong to **multiple groups** — select groups via checkboxes when adding/editing. Click group tabs to filter.
+
+### 3. JSON Batch Import
+
+Click "JSON Batch Import" and paste:
+
+```json
+{
+  "groupIds": [],
+  "sites": [
+    {
+      "domain": "www.google.com",
+      "checkHttp": true,
+      "checkHttps": true,
+      "checkWhois": false,
+      "httpCheckIntervalSeconds": 300,
+      "failureThreshold": 3
+    },
+    {
+      "domain": "github.com",
+      "checkHttps": true,
+      "httpCheckIntervalSeconds": 600,
+      "tlsCheckIntervalDays": 1,
+      "domainCheckIntervalDays": 7
+    }
+  ]
+}
+```
+
+Or a plain array:
+
+```json
+[
+  { "domain": "example.com" },
+  { "domain": "www.github.com", "checkWhois": true, "failureThreshold": 5 }
+]
+```
+
+**Field Reference:**
+
+| Field | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `domain` | string | *(required)* | Domain name, without http/https prefix |
+| `checkHttp` | boolean | `true` | Monitor HTTP |
+| `checkHttps` | boolean | `true` | Monitor HTTPS (auto-enables TLS) |
+| `checkTls` | boolean | `true` | Check TLS certificate expiry |
+| `checkWhois` | boolean | `true` | Check WHOIS domain expiry |
+| `httpCheckIntervalSeconds` | number | `300` | HTTP/HTTPS check interval in seconds (min 60) |
+| `tlsCheckIntervalDays` | number | `1` | TLS check interval in days (min 1) |
+| `domainCheckIntervalDays` | number | `1` | WHOIS check interval in days (min 1) |
+| `failureThreshold` | number | `3` | Consecutive HTTP failures before alert |
+| `groupIds` | string[] | `[]` | Assign to groups (supports multiple) |
+
+### 4. Check History
+
+Each domain card has a 📊 button. Click it to view all check results from the last 24 hours in a table showing: timestamp, health status, HTTP status code, TLS days left, domain days left, and error details.
+
+### 5. Telegram Alert Settings
+
+Expand the "🔔 Telegram Alert Settings" panel at the top of the page:
+
+1. Enter **Bot Token** (from [@BotFather](https://t.me/BotFather))
+2. Enter **Chat ID** (personal or group/channel ID)
+3. Set **TLS alert days** (default 14) and **Domain alert days** (default 30)
+4. Check "Enable Telegram Alerts"
+5. Click "💾 Save Settings"
+
+Click "📤 Send Test Message" to verify connectivity.
+
+**Expiry alert example:**
+
+```
+🚨 Website Monitoring Alert 🚨
+
+🔐 TLS Certificate Expiring Soon
+  🟡 example.com — 12 days left
+
+🌐 Domain Expiring Soon
+  🟠 test.com — 10 days left
+
+⏰ Alert Time: 2026/2/7 8:00:00 PM
+📋 2 items need attention
+```
+
+**Consecutive failure alert example:**
+
+```
+🔥 Consecutive Failure Alert 🔥
+
+  🟠 example.com — Failed 3 times (threshold 3)
+  🔴 test.com — Failed 6 times (threshold 3)
+
+⏰ Alert Time: 2026/2/7 8:01:00 PM
+⚠️ 2 domains with consecutive failures
+```
+
+## Batch Processing
+
+To prevent overload when monitoring hundreds of domains:
+
+- **5 domains per batch**, processed concurrently
+- **2-second delay** between batches
+- Each domain's HTTP/HTTPS, TLS, WHOIS checks have **independent intervals** — checks that aren't due are skipped
+- All state (last check time, failure count) is **persisted in DB** — survives Docker restarts
+
+## API Reference
+
+### Sites API
+
+| Method | Path | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/sites` | Admin/Editor | Add a monitored domain (rejects duplicates) |
+| `POST` | `/sites/batch` | Admin/Editor | Batch import domains (rejects duplicates) |
+| `GET` | `/sites` | JWT | Get all domains (with groups + latest result) |
+| `GET` | `/sites/:id` | JWT | Get a single domain |
+| `GET` | `/sites/:id/history` | JWT | Get 24h check history |
+| `PUT` | `/sites/bulk` | Admin/Editor | Bulk update monitoring settings |
+| `PUT` | `/sites/:id` | Admin/Editor | Update domain settings |
+| `PUT` | `/sites/:id/status/:status` | Admin/Editor | Toggle status (active/paused) |
+| `DELETE` | `/sites/:id` | Admin | Delete a domain |
+
+### Groups API
+
+| Method | Path | Description |
 | :--- | :--- | :--- |
-| **環境依賴** | 啟動 NestJS 需要外部 PostgreSQL/Redis 服務。 | 透過 `docker compose up` 解決。**AI 助理無法自動執行此啟動命令。** |
-| **前端構建失敗** | `vue-tsc` 類型檢查與沙盒環境衝突，導致構建失敗。 | **妥協：** 移除 `npm run build` 中的 `vue-tsc` 步驟。**風險：** 潛在的 TypeScript 類型錯誤不會被發現。 |
-| **WHOIS 檢查** | 依賴 `whois-json` 庫，可能存在速率限制 (Rate Limit) 風險。 | 需在生產環境中實作 Redis 快取或使用外部 WHOIS 服務。 |
+| `POST` | `/groups` | Create a group |
+| `GET` | `/groups` | Get all groups (with domains) |
+| `GET` | `/groups/:id` | Get a single group |
+| `PUT` | `/groups/:id` | Update a group |
+| `DELETE` | `/groups/:id` | Delete a group (domains become ungrouped) |
 
-### 3. 下一步行動 (Next Steps)
+### Auth API
 
-下一位接手人應優先完成以下任務：
+| Method | Path | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auth/login` | None | Login (returns JWT + user info) |
+| `GET` | `/auth/me` | JWT | Get current user info |
+| `PUT` | `/auth/change-password` | JWT | Change own password |
+| `GET` | `/auth/users` | Admin | List all users |
+| `POST` | `/auth/users` | Admin | Create a user |
+| `PUT` | `/auth/users/:id` | Admin | Update user (role, password, groups) |
+| `DELETE` | `/auth/users/:id` | Admin | Delete a user |
 
-1.  **提交程式碼：** 配置 Git 身份，執行 Commit 和 Push。
-2.  **啟動服務：** 執行 `docker compose up --build -d`。
-3.  **完成前端：** 實作網站新增/編輯模態框，並整合後端 API。
-4.  **優化檢查：** 將 `CheckerService` 中的 TLS 檢查邏輯調整為 Promise/Async-Await 模式，避免阻塞 Node.js Event Loop。
+### Audit API
 
----
-`DEVELOPER_NOTES.md` 文件記錄了更詳細的錯誤修正日誌。
+| Method | Path | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/audit` | Admin | Get all audit logs |
+| `GET` | `/audit/me` | JWT | Get current user's audit logs |
+
+### Alert API
+
+| Method | Path | Description |
+| :--- | :--- | :--- |
+| `GET` | `/alert/config` | Get alert configuration |
+| `PUT` | `/alert/config` | Update alert configuration (admin only) |
+| `POST` | `/alert/test` | Send Telegram test message (admin only) |
+
+## Docker Compose Services
+
+```yaml
+services:
+  nginx:        # Nginx reverse proxy (Port 80)
+  frontend:     # Vue 3 frontend dev server (Port 5173), runs independently
+  api:          # NestJS backend API (Port 3000, internal only)
+  db:           # PostgreSQL 15 database
+  redis:        # Redis 7 cache
+```
+
+## Tech Stack
+
+- **Backend:** NestJS, TypeORM, PostgreSQL, Redis, Passport.js, JWT, bcryptjs, axios, whois-json
+- **Frontend:** Vue 3, Vite, axios
+- **Deployment:** Docker Compose, Nginx (persistent volumes for DB & Redis)
+- **Auth:** JWT + Role-Based Access Control (admin/allread/onlyedit/onlyread)
+- **Alerts:** Telegram Bot API

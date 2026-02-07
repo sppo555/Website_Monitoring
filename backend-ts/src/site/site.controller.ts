@@ -1,20 +1,48 @@
 // backend-ts/src/site/site.controller.ts
-import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
-import { SiteService, SiteDto } from './site.service';
+import { Controller, Get, Post, Body, Param, Put, Delete, HttpCode, HttpStatus, BadRequestException, UseGuards, Request } from '@nestjs/common';
+import { SiteService, SiteDto, BatchImportDto, BulkUpdateDto } from './site.service';
 import { Site } from './site.entity';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard, Roles } from '../auth/roles.guard';
+import { AuditService } from '../audit/audit.service';
 
 @Controller('sites')
+@UseGuards(JwtAuthGuard)
 export class SiteController {
-  constructor(private readonly siteService: SiteService) {}
+  constructor(
+    private readonly siteService: SiteService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'onlyedit')
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() siteDto: SiteDto): Promise<Site> {
-    // 驗證 URL 格式等應在 DTO 類中實作
-    if (!siteDto.url) {
-        throw new BadRequestException('URL is required');
+  async create(@Request() req: any, @Body() siteDto: SiteDto) {
+    if (!siteDto.domain) {
+        throw new BadRequestException('domain is required');
     }
-    return this.siteService.create(siteDto);
+    const result = await this.siteService.create(siteDto);
+    await this.auditService.log(req.user.id, req.user.username, 'create_site', siteDto.domain);
+    return result;
+  }
+
+  @Post('batch')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'onlyedit')
+  @HttpCode(HttpStatus.CREATED)
+  async batchCreate(@Request() req: any, @Body() dto: BatchImportDto) {
+    if (!dto.sites || !Array.isArray(dto.sites) || dto.sites.length === 0) {
+      throw new BadRequestException('sites array is required and must not be empty');
+    }
+    for (const s of dto.sites) {
+      if (!s.domain) {
+        throw new BadRequestException('Each site must have a domain');
+      }
+    }
+    const result = await this.siteService.batchCreate(dto);
+    await this.auditService.log(req.user.id, req.user.username, 'batch_create_sites', `${dto.sites.length} sites`);
+    return result;
   }
 
   @Get()
@@ -22,28 +50,50 @@ export class SiteController {
     return this.siteService.findAll();
   }
 
+  @Get(':id/history')
+  getHistory(@Param('id') id: string) {
+    return this.siteService.getHistory(id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string): Promise<Site> {
     return this.siteService.findOne(id);
   }
 
+  @Put('bulk')
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'onlyedit')
+  async bulkUpdate(@Request() req: any, @Body() dto: BulkUpdateDto) {
+    const result = await this.siteService.bulkUpdate(dto);
+    await this.auditService.log(req.user.id, req.user.username, 'bulk_update_sites', `${dto.siteIds.length} sites`);
+    return result;
+  }
+
   @Put(':id')
-  update(@Param('id') id: string, @Body() siteDto: SiteDto): Promise<Site> {
-    return this.siteService.update(id, siteDto);
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'onlyedit')
+  async update(@Request() req: any, @Param('id') id: string, @Body() siteDto: SiteDto) {
+    const result = await this.siteService.update(id, siteDto);
+    await this.auditService.log(req.user.id, req.user.username, 'update_site', result.domain);
+    return result;
   }
 
   @Put(':id/status/:status')
-  updateStatus(
-    @Param('id') id: string,
-    @Param('status') status: 'active' | 'paused',
-  ): Promise<Site> {
-    // 這裡調用 service 內的邏輯，service 已經包含驗證
-    return this.siteService.updateStatus(id, status);
+  @UseGuards(RolesGuard)
+  @Roles('admin', 'onlyedit')
+  async updateStatus(@Request() req: any, @Param('id') id: string, @Param('status') status: 'active' | 'paused') {
+    const result = await this.siteService.updateStatus(id, status);
+    await this.auditService.log(req.user.id, req.user.username, 'update_status', `${result.domain} → ${status}`);
+    return result;
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string): Promise<void> {
-    return this.siteService.remove(id);
+  async remove(@Request() req: any, @Param('id') id: string) {
+    const site = await this.siteService.findOne(id);
+    await this.siteService.remove(id);
+    await this.auditService.log(req.user.id, req.user.username, 'delete_site', site.domain);
   }
 }
