@@ -1,5 +1,5 @@
 // backend-ts/src/site/site.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Site } from './site.entity';
@@ -40,7 +40,9 @@ export interface BulkUpdateDto {
 }
 
 @Injectable()
-export class SiteService {
+export class SiteService implements OnModuleInit {
+  private readonly logger = new Logger(SiteService.name);
+
   constructor(
     @InjectRepository(Site)
     private sitesRepository: Repository<Site>,
@@ -49,6 +51,30 @@ export class SiteService {
     @InjectRepository(Group)
     private groupRepository: Repository<Group>,
   ) {}
+
+  // 首次啟動自動建立預設監控域名
+  async onModuleInit() {
+    const count = await this.sitesRepository.count();
+    if (count === 0) {
+      const seedDomains = ['www.google.com', 'github.com'];
+      for (const domain of seedDomains) {
+        const site = this.sitesRepository.create({
+          domain,
+          checkHttp: true,
+          checkHttps: true,
+          checkTls: true,
+          checkWhois: true,
+          httpCheckIntervalSeconds: 300,
+          tlsCheckIntervalDays: 1,
+          domainCheckIntervalDays: 1,
+          failureThreshold: 3,
+          groups: [],
+        });
+        await this.sitesRepository.save(site);
+      }
+      this.logger.log(`已建立預設監控域名: ${seedDomains.join(', ')}`);
+    }
+  }
 
   private async resolveGroups(groupIds?: string[]): Promise<Group[]> {
     if (!groupIds || groupIds.length === 0) return [];
