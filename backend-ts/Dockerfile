@@ -14,6 +14,9 @@ COPY . .
 # 執行 NestJS 編譯
 RUN npm run build
 
+# 診斷步驟：檢查 dist 是否生成
+RUN ls -al dist
+
 # 階段 2: 生產運行
 FROM node:20-alpine AS production
 
