@@ -153,8 +153,16 @@ function onHttpsChange() {
 async function handleSubmit() {
   submitting.value = true;
   if (form.checkHttps) form.checkTls = true;
+  // 自動去除 http:// https:// 前綴
+  form.domain = form.domain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
   emit('submit', { ...form });
 }
+
+function resetSubmitting() {
+  submitting.value = false;
+}
+
+defineExpose({ resetSubmitting });
 
 function onEsc(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close');

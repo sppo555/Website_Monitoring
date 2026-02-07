@@ -32,6 +32,16 @@
         <label><input type="checkbox" v-model="fields.failureThreshold.enabled" /> {{ t('bulk.failureThreshold') }}</label>
         <input v-if="fields.failureThreshold.enabled" type="number" v-model.number="fields.failureThreshold.value" min="1" />
       </div>
+      <div class="bulk-field bulk-field-groups">
+        <label><input type="checkbox" v-model="fields.groupIds.enabled" /> {{ t('bulk.groups') }}</label>
+        <div v-if="fields.groupIds.enabled" class="group-checkboxes">
+          <label v-for="g in groups" :key="g.id" class="cb-label">
+            <input type="checkbox" :value="g.id" v-model="fields.groupIds.value" />
+            {{ g.name }}
+          </label>
+          <span v-if="groups.length === 0" class="hint">{{ t('siteForm.noGroups') }}</span>
+        </div>
+      </div>
 
       <div v-if="error" class="error-msg">{{ error }}</div>
 
@@ -48,7 +58,8 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { t } from '../i18n';
 
-const props = defineProps<{ siteIds: string[] }>();
+interface GroupItem { id: string; name: string; }
+const props = defineProps<{ siteIds: string[]; groups: GroupItem[] }>();
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved'): void }>();
 
 const saving = ref(false);
@@ -64,6 +75,7 @@ const fields = reactive({
   checkWhois: { enabled: false, value: true },
   httpInterval: { enabled: false, value: 300 },
   failureThreshold: { enabled: false, value: 3 },
+  groupIds: { enabled: false, value: [] as string[] },
 });
 
 async function save() {
@@ -75,6 +87,7 @@ async function save() {
   if (fields.checkWhois.enabled) body.checkWhois = fields.checkWhois.value;
   if (fields.httpInterval.enabled) body.httpCheckIntervalSeconds = fields.httpInterval.value;
   if (fields.failureThreshold.enabled) body.failureThreshold = fields.failureThreshold.value;
+  if (fields.groupIds.enabled) body.groupIds = fields.groupIds.value;
 
   saving.value = true;
   try {
@@ -105,4 +118,9 @@ async function save() {
 .btn-cancel { background: #f0f0f0; color: #555; }
 .btn-save { background: #4361ee; color: #fff; }
 .btn-save:disabled { opacity: 0.6; }
+.bulk-field-groups { flex-direction: column; align-items: flex-start; }
+.group-checkboxes { display: flex; gap: 10px; flex-wrap: wrap; padding: 4px 0 0 24px; }
+.cb-label { display: flex; align-items: center; gap: 5px; font-size: 0.88rem; color: #555; cursor: pointer; }
+.cb-label input[type="checkbox"] { width: 15px; height: 15px; accent-color: #4361ee; }
+.hint { font-size: 0.78rem; color: #999; margin-left: 24px; }
 </style>

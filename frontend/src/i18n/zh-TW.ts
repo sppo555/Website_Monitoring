@@ -131,6 +131,7 @@ export default {
   'bulk.whoisCheck': 'WHOIS 檢查',
   'bulk.httpIntervalSec': 'HTTP 間隔 (秒)',
   'bulk.failureThreshold': '失敗門檻',
+  'bulk.groups': '所屬群組',
   'bulk.apply': '套用修改',
   'bulk.failed': '批量修改失敗',
 

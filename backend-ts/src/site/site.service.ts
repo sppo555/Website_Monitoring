@@ -37,6 +37,7 @@ export interface BulkUpdateDto {
   tlsCheckIntervalDays?: number;
   domainCheckIntervalDays?: number;
   failureThreshold?: number;
+  groupIds?: string[];
 }
 
 @Injectable()
@@ -81,7 +82,12 @@ export class SiteService implements OnModuleInit {
     return this.groupRepository.find({ where: { id: In(groupIds) } });
   }
 
+  private stripProtocol(domain: string): string {
+    return domain.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  }
+
   async create(siteDto: SiteDto): Promise<any> {
+    siteDto.domain = this.stripProtocol(siteDto.domain).trim();
     const existing = await this.sitesRepository.findOne({ where: { domain: siteDto.domain } });
     if (existing) {
       throw new BadRequestException(`域名 ${siteDto.domain} 已存在`);
@@ -94,6 +100,10 @@ export class SiteService implements OnModuleInit {
   }
 
   async batchCreate(dto: BatchImportDto): Promise<any[]> {
+    // 自動去除 http:// https:// 前綴
+    for (const s of dto.sites) {
+      s.domain = this.stripProtocol(s.domain).trim();
+    }
     const domains = dto.sites.map(s => s.domain);
     const uniqueDomains = new Set(domains);
     if (uniqueDomains.size !== domains.length) {
@@ -160,13 +170,17 @@ export class SiteService implements OnModuleInit {
   }
 
   async bulkUpdate(dto: BulkUpdateDto): Promise<Site[]> {
-    const { siteIds, ...updates } = dto;
+    const { siteIds, groupIds, ...updates } = dto;
     if (!siteIds || siteIds.length === 0) {
       throw new BadRequestException('siteIds is required');
     }
     const sites = await this.sitesRepository.find({ where: { id: In(siteIds) }, relations: ['groups'] });
+    const groups = groupIds !== undefined ? await this.resolveGroups(groupIds) : undefined;
     for (const site of sites) {
       Object.assign(site, updates);
+      if (groups !== undefined) {
+        site.groups = groups;
+      }
     }
     await this.sitesRepository.save(sites);
     return sites;

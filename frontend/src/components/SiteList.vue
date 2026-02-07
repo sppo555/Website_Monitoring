@@ -99,10 +99,10 @@
       </div>
     </div>
 
-    <SiteFormModal v-if="showModal" :is-edit="!!editingSite" :groups="groups" :initial-data="editingFormData" @close="closeModal" @submit="handleFormSubmit" />
+    <SiteFormModal ref="formModalRef" v-if="showModal" :is-edit="!!editingSite" :groups="groups" :initial-data="editingFormData" @close="closeModal" @submit="handleFormSubmit" />
     <BatchImportModal v-if="showBatchModal" :groups="groups" @close="showBatchModal = false" @imported="onBatchImported" />
     <HistoryModal v-if="historySite" :site-id="historySite.id" :domain="historySite.domain" @close="historySite = null" />
-    <BulkEditModal v-if="showBulkEdit" :site-ids="selectedIds" @close="showBulkEdit = false" @saved="onBulkSaved" />
+    <BulkEditModal v-if="showBulkEdit" :site-ids="selectedIds" :groups="groups" @close="showBulkEdit = false" @saved="onBulkSaved" />
   </div>
 </template>
 
@@ -149,6 +149,7 @@ const newGroupName = ref('');
 const historySite = ref<Site | null>(null);
 const searchQuery = ref('');
 const selectedIds = ref<string[]>([]);
+const formModalRef = ref<any>(null);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 const visibleSites = computed(() => {
@@ -226,7 +227,11 @@ async function handleFormSubmit(formData: any) {
     if (editingSite.value) { await axios.put(`${API_BASE}/${editingSite.value.id}`, formData); }
     else { await axios.post(API_BASE, formData); }
     closeModal(); await fetchSites();
-  } catch (err: any) { console.error('操作失敗:', err); alert(err.response?.data?.message || '操作失敗'); }
+  } catch (err: any) {
+    console.error('操作失敗:', err);
+    alert(err.response?.data?.message || '操作失敗');
+    formModalRef.value?.resetSubmitting();
+  }
 }
 
 async function onBatchImported() { showBatchModal.value = false; await Promise.all([fetchGroups(), fetchSites()]); }

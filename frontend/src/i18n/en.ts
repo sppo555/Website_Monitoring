@@ -131,6 +131,7 @@ export default {
   'bulk.whoisCheck': 'WHOIS Check',
   'bulk.httpIntervalSec': 'HTTP Interval (sec)',
   'bulk.failureThreshold': 'Failure Threshold',
+  'bulk.groups': 'Groups',
   'bulk.apply': 'Apply Changes',
   'bulk.failed': 'Bulk edit failed',
 
