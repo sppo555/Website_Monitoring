@@ -7,7 +7,7 @@ const locales: Record<string, Record<string, string>> = { 'zh-TW': zhTW, en };
 export type Locale = 'zh-TW' | 'en';
 
 const saved = localStorage.getItem('locale') as Locale | null;
-export const currentLocale = ref<Locale>(saved && locales[saved] ? saved : 'zh-TW');
+export const currentLocale = ref<Locale>(saved && locales[saved] ? saved : 'en');
 
 export function t(key: string, params?: Record<string, string | number>): string {
   let text = locales[currentLocale.value]?.[key] || locales['zh-TW']?.[key] || key;

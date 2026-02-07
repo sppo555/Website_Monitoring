@@ -8,7 +8,7 @@
           <h1>🖥 {{ t('app.title') }}</h1>
           <div class="header-user">
             <span>{{ authState.user?.username }} ({{ authState.user?.role }})</span>
-            <button class="btn-header btn-lang" @click="toggleLocale">{{ currentLocale === 'zh-TW' ? 'EN' : '中' }}</button>
+            <button class="btn-header btn-lang" @click="toggleLocale">{{ currentLocale === 'zh-TW' ? 'EN' : 'CN' }}</button>
             <button class="btn-header" @click="showChangePw = true">{{ t('app.changePassword') }}</button>
             <button class="btn-header" @click="handleLogout">{{ t('app.logout') }}</button>
           </div>

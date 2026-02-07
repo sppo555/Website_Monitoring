@@ -4,7 +4,7 @@
     <div class="login-card">
       <h1>{{ t('login.title') }}</h1>
       <p class="subtitle">{{ t('login.subtitle') }}</p>
-      <button class="btn-lang" @click="toggleLocale">{{ currentLocale === 'zh-TW' ? 'EN' : '中' }}</button>
+      <button class="btn-lang" @click="toggleLocale">{{ currentLocale === 'zh-TW' ? 'EN' : 'CN' }}</button>
       <form @submit.prevent="handleLogin">
         <div class="form-group">
           <label>{{ t('login.username') }}</label>
