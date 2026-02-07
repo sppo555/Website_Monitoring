@@ -29,7 +29,6 @@ import { RedisModule } from '@nestjs-modules/ioredis';
 
     // 3. Redis 配置 (使用環境變數或預設值)
     RedisModule.forRoot({
-      type: 'single',
       url: process.env.REDIS_URL || 'redis://redis:6379',
     }),
     
