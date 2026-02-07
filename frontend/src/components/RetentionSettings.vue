@@ -1,35 +1,35 @@
 <!-- frontend/src/components/RetentionSettings.vue -->
 <template>
   <div class="retention-page">
-    <h2>⚙️ 系統設定</h2>
+    <h2>{{ t('retention.title') }}</h2>
 
     <div class="setting-card">
-      <h3>📋 操作紀錄自動清理</h3>
+      <h3>{{ t('retention.auditCleanup') }}</h3>
       <div class="setting-row">
         <label class="toggle-label">
           <input type="checkbox" v-model="form.auditLogEnabled" />
-          啟用自動清理操作紀錄
+          {{ t('retention.enableAuditCleanup') }}
         </label>
       </div>
       <div v-if="form.auditLogEnabled" class="setting-row">
-        <label>保留天數</label>
+        <label>{{ t('retention.retentionDays') }}</label>
         <input type="number" v-model.number="form.auditLogRetentionDays" min="1" max="365" class="num-input" />
-        <span class="hint">超過此天數的操作紀錄將在每日排程中自動刪除</span>
+        <span class="hint">{{ t('retention.auditHint') }}</span>
       </div>
     </div>
 
     <div class="setting-card">
-      <h3>📊 域名監控紀錄自動清理</h3>
+      <h3>{{ t('retention.checkResultCleanup') }}</h3>
       <div class="setting-row">
         <label class="toggle-label">
           <input type="checkbox" v-model="form.checkResultEnabled" />
-          啟用自動清理監控紀錄
+          {{ t('retention.enableCheckCleanup') }}
         </label>
       </div>
       <div v-if="form.checkResultEnabled" class="setting-row">
-        <label>保留天數</label>
+        <label>{{ t('retention.retentionDays') }}</label>
         <input type="number" v-model.number="form.checkResultRetentionDays" min="1" max="365" class="num-input" />
-        <span class="hint">超過此天數的檢查結果將在每日排程中自動刪除</span>
+        <span class="hint">{{ t('retention.checkHint') }}</span>
       </div>
     </div>
 
@@ -37,7 +37,7 @@
     <div v-if="success" class="success-msg">{{ success }}</div>
 
     <div class="actions">
-      <button class="btn btn-save" @click="save" :disabled="saving">{{ saving ? '儲存中...' : '💾 儲存設定' }}</button>
+      <button class="btn btn-save" @click="save" :disabled="saving">{{ saving ? t('common.saving') : t('retention.saveBtn') }}</button>
     </div>
   </div>
 </template>
@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import axios from 'axios';
+import { t } from '../i18n';
 
 const form = reactive({
   auditLogEnabled: false,
@@ -75,10 +76,10 @@ async function save() {
   saving.value = true;
   try {
     await axios.put('/api/retention/config', { ...form });
-    success.value = '設定已儲存！';
+    success.value = t('retention.saved');
     setTimeout(() => { success.value = ''; }, 3000);
   } catch (err: any) {
-    error.value = err.response?.data?.message || '儲存失敗';
+    error.value = err.response?.data?.message || t('retention.saveFailed');
   } finally {
     saving.value = false;
   }

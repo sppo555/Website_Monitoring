@@ -4,40 +4,40 @@
     <!-- 群組管理列 -->
     <div class="group-bar">
       <div class="group-tabs">
-        <button class="group-tab" :class="{ active: selectedGroupId === null }" @click="selectedGroupId = null">全部</button>
+        <button class="group-tab" :class="{ active: selectedGroupId === null }" @click="selectedGroupId = null">{{ t('common.all') }}</button>
         <button v-for="g in groups" :key="g.id" class="group-tab" :class="{ active: selectedGroupId === g.id }" @click="selectedGroupId = g.id">
           {{ g.name }}
           <span class="group-count">{{ countByGroup(g.id) }}</span>
         </button>
       </div>
       <div class="group-actions" v-if="userIsAdmin">
-        <input v-model="newGroupName" class="group-input" placeholder="新群組名稱" @keyup.enter="createGroup" />
+        <input v-model="newGroupName" class="group-input" :placeholder="t('site.newGroupPlaceholder')" @keyup.enter="createGroup" />
         <button class="btn-sm btn-outline" @click="createGroup" :disabled="!newGroupName.trim()">+</button>
-        <button v-if="selectedGroupId" class="btn-sm btn-outline btn-danger-outline" @click="deleteGroup" title="刪除此群組">刪除群組</button>
+        <button v-if="selectedGroupId" class="btn-sm btn-outline btn-danger-outline" @click="deleteGroup" :title="t('site.deleteGroup')">{{ t('site.deleteGroup') }}</button>
       </div>
     </div>
 
     <!-- 工具列 -->
     <div class="toolbar">
       <h2>
-        {{ selectedGroupId ? groups.find(g => g.id === selectedGroupId)?.name : '全部' }}
+        {{ selectedGroupId ? groups.find(g => g.id === selectedGroupId)?.name : t('common.all') }}
         <span class="site-count">({{ searchedSites.length }})</span>
       </h2>
       <div class="toolbar-actions">
-        <input v-model="searchQuery" class="search-input" placeholder="🔍 搜尋域名..." />
+        <input v-model="searchQuery" class="search-input" :placeholder="t('site.searchPlaceholder')" />
         <template v-if="userCanEdit">
-          <button v-if="selectedIds.length > 0" class="btn btn-warning" @click="showBulkEdit = true">批量修改 ({{ selectedIds.length }})</button>
-          <button class="btn btn-secondary" @click="showBatchModal = true">JSON 批量匯入</button>
-          <button class="btn btn-primary" @click="openAddModal">+ 新增網站</button>
+          <button v-if="selectedIds.length > 0" class="btn btn-warning" @click="showBulkEdit = true">{{ t('site.bulkEdit') }} ({{ selectedIds.length }})</button>
+          <button class="btn btn-secondary" @click="showBatchModal = true">{{ t('site.batchImport') }}</button>
+          <button class="btn btn-primary" @click="openAddModal">{{ t('site.addSite') }}</button>
         </template>
       </div>
     </div>
 
-    <div v-if="loading" class="loading">載入中...</div>
+    <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
 
     <div v-else-if="searchedSites.length === 0" class="empty-state">
-      <p>目前沒有監控中的網站</p>
-      <p>點擊「新增網站」或「JSON 批量匯入」開始監控</p>
+      <p>{{ t('site.empty') }}</p>
+      <p>{{ t('site.emptyHint') }}</p>
     </div>
 
     <div v-else class="site-cards">
@@ -51,7 +51,7 @@
           <div class="card-badges">
             <span v-for="g in (site.groups || [])" :key="g.id" class="badge badge-group">{{ g.name }}</span>
             <span class="badge" :class="site.status === 'active' ? 'badge-active' : 'badge-paused'">
-              {{ site.status === 'active' ? '監控中' : '已暫停' }}
+              {{ site.status === 'active' ? t('site.active') : t('site.paused') }}
             </span>
           </div>
         </div>
@@ -65,35 +65,35 @@
 
         <div class="card-metrics">
           <div class="metric" v-if="site.checkHttp || site.checkHttps">
-            <span class="metric-label">HTTP 狀態</span>
+            <span class="metric-label">{{ t('site.httpStatus') }}</span>
             <span class="metric-value" :class="getHttpClass(site)">{{ site.latestResult?.httpStatus ?? '—' }}</span>
           </div>
           <div class="metric" v-if="site.checkTls || site.checkHttps">
-            <span class="metric-label">TLS 證書</span>
-            <span class="metric-value" :class="getTlsClass(site)">{{ site.latestResult?.tlsDaysLeft != null ? site.latestResult.tlsDaysLeft + ' 天' : '—' }}</span>
+            <span class="metric-label">{{ t('site.tlsCert') }}</span>
+            <span class="metric-value" :class="getTlsClass(site)">{{ site.latestResult?.tlsDaysLeft != null ? site.latestResult.tlsDaysLeft + ' ' + t('common.days') : '—' }}</span>
           </div>
           <div class="metric" v-if="site.checkWhois">
-            <span class="metric-label">域名到期</span>
-            <span class="metric-value" :class="getWhoisClass(site)">{{ site.latestResult?.domainDaysLeft != null ? site.latestResult.domainDaysLeft + ' 天' : '—' }}</span>
+            <span class="metric-label">{{ t('site.domainExpiry') }}</span>
+            <span class="metric-value" :class="getWhoisClass(site)">{{ site.latestResult?.domainDaysLeft != null ? site.latestResult.domainDaysLeft + ' ' + t('common.days') : '—' }}</span>
           </div>
           <div class="metric">
-            <span class="metric-label">HTTP 間隔</span>
+            <span class="metric-label">{{ t('site.httpInterval') }}</span>
             <span class="metric-value">{{ site.httpCheckIntervalSeconds }}s</span>
           </div>
           <div class="metric" v-if="site.consecutiveFailures > 0">
-            <span class="metric-label">連續失敗</span>
+            <span class="metric-label">{{ t('site.consecFails') }}</span>
             <span class="metric-value text-red">{{ site.consecutiveFailures }}/{{ site.failureThreshold }}</span>
           </div>
         </div>
 
         <div class="card-footer">
-          <span class="check-time" v-if="site.latestResult?.checkedAt">最後檢查: {{ formatTime(site.latestResult.checkedAt) }}</span>
-          <span class="check-time" v-else>尚未檢查</span>
+          <span class="check-time" v-if="site.latestResult?.checkedAt">{{ t('site.lastCheck') }} {{ formatTime(site.latestResult.checkedAt) }}</span>
+          <span class="check-time" v-else>{{ t('site.notChecked') }}</span>
           <div class="card-actions">
-            <button class="btn-icon" title="檢查歷史" @click="openHistory(site)">📊</button>
-            <button v-if="userCanEdit" class="btn-icon" title="編輯" @click="openEditModal(site)">&#9998;</button>
-            <button v-if="userCanEdit" class="btn-icon" :title="site.status === 'active' ? '暫停' : '啟動'" @click="toggleStatus(site)">{{ site.status === 'active' ? '⏸' : '▶' }}</button>
-            <button v-if="userIsAdmin" class="btn-icon btn-danger" title="刪除" @click="deleteSite(site)">&#10005;</button>
+            <button class="btn-icon" :title="t('site.historyTitle')" @click="openHistory(site)">📊</button>
+            <button v-if="userCanEdit" class="btn-icon" :title="t('site.editTitle')" @click="openEditModal(site)">&#9998;</button>
+            <button v-if="userCanEdit" class="btn-icon" :title="site.status === 'active' ? t('site.pauseTitle') : t('site.resumeTitle')" @click="toggleStatus(site)">{{ site.status === 'active' ? '⏸' : '▶' }}</button>
+            <button v-if="userIsAdmin" class="btn-icon btn-danger" :title="t('site.deleteTitle')" @click="deleteSite(site)">&#10005;</button>
           </div>
         </div>
       </div>
@@ -114,6 +114,7 @@ import BatchImportModal from './BatchImportModal.vue';
 import HistoryModal from './HistoryModal.vue';
 import BulkEditModal from './BulkEditModal.vue';
 import { authState, isAdmin, canEdit } from '../auth';
+import { t, getDateLocale } from '../i18n';
 
 const userIsAdmin = computed(() => isAdmin());
 const userCanEdit = computed(() => {
@@ -211,7 +212,7 @@ async function createGroup() {
 async function deleteGroup() {
   if (!selectedGroupId.value) return;
   const group = groups.value.find(g => g.id === selectedGroupId.value);
-  if (!confirm(`確定要刪除群組「${group?.name}」嗎？`)) return;
+  if (!confirm(t('site.confirmDeleteGroup', { name: group?.name || '' }))) return;
   try { await axios.delete(`${GROUP_API}/${selectedGroupId.value}`); selectedGroupId.value = null; await Promise.all([fetchGroups(), fetchSites()]); } catch (err) { console.error('刪除群組失敗:', err); }
 }
 
@@ -237,11 +238,11 @@ async function toggleStatus(site: Site) {
 }
 
 async function deleteSite(site: Site) {
-  if (!confirm(`確定要刪除監控 ${site.domain} 嗎？`)) return;
+  if (!confirm(t('site.confirmDelete', { domain: site.domain }))) return;
   try { await axios.delete(`${API_BASE}/${site.id}`); await fetchSites(); } catch (err) { console.error('刪除失敗:', err); }
 }
 
-function formatTime(dateStr: string): string { return new Date(dateStr).toLocaleString('zh-TW'); }
+function formatTime(dateStr: string): string { return new Date(dateStr).toLocaleString(getDateLocale()); }
 function getHealthClass(site: Site) { if (site.status === 'paused') return 'dot-gray'; if (!site.latestResult) return 'dot-gray'; return site.latestResult.isHealthy ? 'dot-green' : 'dot-red'; }
 function getHttpClass(site: Site) { const s = site.latestResult?.httpStatus; if (!s) return ''; if (s < 300) return 'text-green'; if (s < 400) return 'text-yellow'; return 'text-red'; }
 function getTlsClass(site: Site) { const d = site.latestResult?.tlsDaysLeft; if (d == null) return ''; if (d > 30) return 'text-green'; if (d > 7) return 'text-yellow'; return 'text-red'; }

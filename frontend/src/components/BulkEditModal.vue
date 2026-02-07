@@ -3,41 +3,41 @@
   <div class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header-row">
-        <h2>批量修改監控項目 ({{ siteIds.length }} 個域名)</h2>
-        <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+        <h2>{{ t('bulk.title', { count: siteIds.length }) }}</h2>
+        <button class="btn-close" @click="$emit('close')" :title="t('common.closeEsc')">&times;</button>
       </div>
-      <p class="hint">僅勾選的項目會被修改，未勾選的保持原值</p>
+      <p class="hint">{{ t('bulk.hint') }}</p>
 
       <div class="bulk-field">
-        <label><input type="checkbox" v-model="fields.checkHttp.enabled" /> HTTP 監控</label>
-        <select v-if="fields.checkHttp.enabled" v-model="fields.checkHttp.value"><option :value="true">啟用</option><option :value="false">停用</option></select>
+        <label><input type="checkbox" v-model="fields.checkHttp.enabled" /> {{ t('bulk.httpMonitoring') }}</label>
+        <select v-if="fields.checkHttp.enabled" v-model="fields.checkHttp.value"><option :value="true">{{ t('common.enable') }}</option><option :value="false">{{ t('common.disable') }}</option></select>
       </div>
       <div class="bulk-field">
-        <label><input type="checkbox" v-model="fields.checkHttps.enabled" /> HTTPS 監控</label>
-        <select v-if="fields.checkHttps.enabled" v-model="fields.checkHttps.value"><option :value="true">啟用</option><option :value="false">停用</option></select>
+        <label><input type="checkbox" v-model="fields.checkHttps.enabled" /> {{ t('bulk.httpsMonitoring') }}</label>
+        <select v-if="fields.checkHttps.enabled" v-model="fields.checkHttps.value"><option :value="true">{{ t('common.enable') }}</option><option :value="false">{{ t('common.disable') }}</option></select>
       </div>
       <div class="bulk-field">
-        <label><input type="checkbox" v-model="fields.checkTls.enabled" /> TLS 檢查</label>
-        <select v-if="fields.checkTls.enabled" v-model="fields.checkTls.value"><option :value="true">啟用</option><option :value="false">停用</option></select>
+        <label><input type="checkbox" v-model="fields.checkTls.enabled" /> {{ t('bulk.tlsCheck') }}</label>
+        <select v-if="fields.checkTls.enabled" v-model="fields.checkTls.value"><option :value="true">{{ t('common.enable') }}</option><option :value="false">{{ t('common.disable') }}</option></select>
       </div>
       <div class="bulk-field">
-        <label><input type="checkbox" v-model="fields.checkWhois.enabled" /> WHOIS 檢查</label>
-        <select v-if="fields.checkWhois.enabled" v-model="fields.checkWhois.value"><option :value="true">啟用</option><option :value="false">停用</option></select>
+        <label><input type="checkbox" v-model="fields.checkWhois.enabled" /> {{ t('bulk.whoisCheck') }}</label>
+        <select v-if="fields.checkWhois.enabled" v-model="fields.checkWhois.value"><option :value="true">{{ t('common.enable') }}</option><option :value="false">{{ t('common.disable') }}</option></select>
       </div>
       <div class="bulk-field">
-        <label><input type="checkbox" v-model="fields.httpInterval.enabled" /> HTTP 間隔 (秒)</label>
+        <label><input type="checkbox" v-model="fields.httpInterval.enabled" /> {{ t('bulk.httpIntervalSec') }}</label>
         <input v-if="fields.httpInterval.enabled" type="number" v-model.number="fields.httpInterval.value" min="60" />
       </div>
       <div class="bulk-field">
-        <label><input type="checkbox" v-model="fields.failureThreshold.enabled" /> 失敗門檻</label>
+        <label><input type="checkbox" v-model="fields.failureThreshold.enabled" /> {{ t('bulk.failureThreshold') }}</label>
         <input v-if="fields.failureThreshold.enabled" type="number" v-model.number="fields.failureThreshold.value" min="1" />
       </div>
 
       <div v-if="error" class="error-msg">{{ error }}</div>
 
       <div class="modal-actions">
-        <button class="btn btn-cancel" @click="$emit('close')">取消</button>
-        <button class="btn btn-save" @click="save" :disabled="saving">{{ saving ? '儲存中...' : '套用修改' }}</button>
+        <button class="btn btn-cancel" @click="$emit('close')">{{ t('common.cancel') }}</button>
+        <button class="btn btn-save" @click="save" :disabled="saving">{{ saving ? t('common.saving') : t('bulk.apply') }}</button>
       </div>
     </div>
   </div>
@@ -46,6 +46,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { t } from '../i18n';
 
 const props = defineProps<{ siteIds: string[] }>();
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved'): void }>();
@@ -80,7 +81,7 @@ async function save() {
     await axios.put('/api/sites/bulk', body);
     emit('saved');
   } catch (err: any) {
-    error.value = err.response?.data?.message || '批量修改失敗';
+    error.value = err.response?.data?.message || t('bulk.failed');
   } finally {
     saving.value = false;
   }

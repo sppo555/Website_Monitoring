@@ -2,13 +2,13 @@
 <template>
   <div class="user-mgmt" v-if="isAdmin()">
     <details>
-      <summary class="section-toggle">👥 使用者管理</summary>
+      <summary class="section-toggle">{{ t('user.title') }}</summary>
       <div class="section-body">
         <div class="user-form">
-          <h3>新增使用者</h3>
+          <h3>{{ t('user.addUser') }}</h3>
           <div class="form-row">
-            <input v-model="newUser.username" placeholder="帳號" />
-            <input v-model="newUser.password" type="password" placeholder="密碼" />
+            <input v-model="newUser.username" :placeholder="t('user.usernamePlaceholder')" />
+            <input v-model="newUser.password" type="password" :placeholder="t('user.passwordPlaceholder')" />
             <select v-model="newUser.role">
               <option value="admin">admin</option>
               <option value="allread">allread</option>
@@ -16,11 +16,11 @@
               <option value="onlyread">onlyread</option>
             </select>
             <button class="btn-add" @click="createUser" :disabled="creating">
-              {{ creating ? '...' : '+ 新增' }}
+              {{ creating ? '...' : t('user.addBtn') }}
             </button>
           </div>
           <div v-if="newUser.role === 'onlyedit' || newUser.role === 'onlyread'" class="group-assign">
-            <label>指定群組：</label>
+            <label>{{ t('user.assignGroups') }}</label>
             <div class="group-checkboxes">
               <label v-for="g in groups" :key="g.id" class="cb-label">
                 <input type="checkbox" :value="g.id" v-model="newUser.assignedGroupIds" />
@@ -34,10 +34,10 @@
         <table class="user-table" v-if="users.length > 0">
           <thead>
             <tr>
-              <th>帳號</th>
-              <th>角色</th>
-              <th>指定群組</th>
-              <th>操作</th>
+              <th>{{ t('user.colUsername') }}</th>
+              <th>{{ t('user.colRole') }}</th>
+              <th>{{ t('user.colGroups') }}</th>
+              <th>{{ t('user.colActions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -67,7 +67,7 @@
                   v-if="u.username !== 'admin'"
                   class="btn-del"
                   @click="deleteUser(u)"
-                >刪除</button>
+                >{{ t('common.delete') }}</button>
               </td>
             </tr>
           </tbody>
@@ -81,6 +81,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { isAdmin } from '../auth';
+import { t } from '../i18n';
 
 interface GroupItem { id: string; name: string; }
 interface UserItem {
@@ -118,7 +119,7 @@ async function fetchGroups() {
 async function createUser() {
   formError.value = '';
   if (!newUser.value.username || !newUser.value.password) {
-    formError.value = '帳號和密碼為必填';
+    formError.value = t('user.requiredFields');
     return;
   }
   creating.value = true;
@@ -127,7 +128,7 @@ async function createUser() {
     newUser.value = { username: '', password: '', role: 'onlyread', assignedGroupIds: [] };
     await fetchUsers();
   } catch (err: any) {
-    formError.value = err.response?.data?.message || '建立失敗';
+    formError.value = err.response?.data?.message || t('user.createFailed');
   } finally {
     creating.value = false;
   }
@@ -146,7 +147,7 @@ async function updateGroups(u: UserItem) {
 }
 
 async function deleteUser(u: UserItem) {
-  if (!confirm(`確定要刪除使用者「${u.username}」嗎？`)) return;
+  if (!confirm(t('user.confirmDelete', { name: u.username }))) return;
   try {
     await axios.delete(`/api/auth/users/${u.id}`);
     await fetchUsers();

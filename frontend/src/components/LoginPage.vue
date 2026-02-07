@@ -2,20 +2,21 @@
 <template>
   <div class="login-wrapper">
     <div class="login-card">
-      <h1>🖥 網站監控系統</h1>
-      <p class="subtitle">Website Monitoring System</p>
+      <h1>{{ t('login.title') }}</h1>
+      <p class="subtitle">{{ t('login.subtitle') }}</p>
+      <button class="btn-lang" @click="toggleLocale">{{ currentLocale === 'zh-TW' ? 'EN' : '中' }}</button>
       <form @submit.prevent="handleLogin">
         <div class="form-group">
-          <label>帳號</label>
+          <label>{{ t('login.username') }}</label>
           <input v-model="username" type="text" placeholder="Username" required autofocus />
         </div>
         <div class="form-group">
-          <label>密碼</label>
+          <label>{{ t('login.password') }}</label>
           <input v-model="password" type="password" placeholder="Password" required />
         </div>
         <div v-if="error" class="error-msg">{{ error }}</div>
         <button type="submit" class="btn-login" :disabled="loading">
-          {{ loading ? '登入中...' : '登入' }}
+          {{ loading ? t('login.loading') : t('login.submit') }}
         </button>
       </form>
     </div>
@@ -25,6 +26,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { login } from '../auth';
+import { t, currentLocale, setLocale } from '../i18n';
+
+function toggleLocale() {
+  setLocale(currentLocale.value === 'zh-TW' ? 'en' : 'zh-TW');
+}
 
 const emit = defineEmits<{ (e: 'loggedIn'): void }>();
 
@@ -40,7 +46,7 @@ async function handleLogin() {
     await login(username.value, password.value);
     emit('loggedIn');
   } catch (err: any) {
-    error.value = err.response?.data?.message || '登入失敗';
+    error.value = err.response?.data?.message || t('login.failed');
   } finally {
     loading.value = false;
   }
@@ -72,8 +78,20 @@ async function handleLogin() {
 .subtitle {
   color: #888;
   font-size: 0.85rem;
-  margin: 0 0 32px 0;
+  margin: 0 0 16px 0;
 }
+.btn-lang {
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 4px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 24px;
+  transition: all 0.2s;
+}
+.btn-lang:hover { background: #e0e0e0; }
 .form-group {
   margin-bottom: 18px;
   text-align: left;

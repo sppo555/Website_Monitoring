@@ -3,27 +3,27 @@
   <div class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header-row">
-        <h2>🔑 修改密碼</h2>
-        <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+        <h2>{{ t('changePw.title') }}</h2>
+        <button class="btn-close" @click="$emit('close')" :title="t('common.closeEsc')">&times;</button>
       </div>
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
-          <label>舊密碼</label>
+          <label>{{ t('changePw.oldPassword') }}</label>
           <input v-model="oldPassword" type="password" required />
         </div>
         <div class="form-group">
-          <label>新密碼</label>
+          <label>{{ t('changePw.newPassword') }}</label>
           <input v-model="newPassword" type="password" required minlength="4" />
         </div>
         <div class="form-group">
-          <label>確認新密碼</label>
+          <label>{{ t('changePw.confirmPassword') }}</label>
           <input v-model="confirmPassword" type="password" required />
         </div>
         <div v-if="error" class="error-msg">{{ error }}</div>
         <div v-if="success" class="success-msg">{{ success }}</div>
         <div class="modal-actions">
-          <button type="button" class="btn btn-cancel" @click="$emit('close')">取消</button>
-          <button type="submit" class="btn btn-save" :disabled="saving">{{ saving ? '儲存中...' : '修改密碼' }}</button>
+          <button type="button" class="btn btn-cancel" @click="$emit('close')">{{ t('common.cancel') }}</button>
+          <button type="submit" class="btn btn-save" :disabled="saving">{{ saving ? t('common.saving') : t('changePw.submit') }}</button>
         </div>
       </form>
     </div>
@@ -33,6 +33,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { t } from '../i18n';
 
 const emit = defineEmits<{ (e: 'close'): void }>();
 
@@ -51,11 +52,11 @@ async function handleSubmit() {
   error.value = '';
   success.value = '';
   if (newPassword.value !== confirmPassword.value) {
-    error.value = '新密碼與確認密碼不一致';
+    error.value = t('changePw.mismatch');
     return;
   }
   if (newPassword.value.length < 4) {
-    error.value = '新密碼至少需要 4 個字元';
+    error.value = t('changePw.tooShort');
     return;
   }
   saving.value = true;
@@ -64,13 +65,13 @@ async function handleSubmit() {
       oldPassword: oldPassword.value,
       newPassword: newPassword.value,
     });
-    success.value = '密碼修改成功！';
+    success.value = t('changePw.success');
     oldPassword.value = '';
     newPassword.value = '';
     confirmPassword.value = '';
     setTimeout(() => emit('close'), 1500);
   } catch (err: any) {
-    error.value = err.response?.data?.message || '修改失敗';
+    error.value = err.response?.data?.message || t('changePw.failed');
   } finally {
     saving.value = false;
   }

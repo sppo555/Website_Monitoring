@@ -3,12 +3,12 @@
   <div class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header-row">
-        <h2>{{ isEdit ? '編輯監控網站' : '新增監控網站' }}</h2>
-        <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+        <h2>{{ isEdit ? t('siteForm.editTitle') : t('siteForm.addTitle') }}</h2>
+        <button class="btn-close" @click="$emit('close')" :title="t('common.closeEsc')">&times;</button>
       </div>
       <form @submit.prevent="handleSubmit">
         <div class="form-group">
-          <label for="domain">域名</label>
+          <label for="domain">{{ t('siteForm.domain') }}</label>
           <input
             id="domain"
             v-model="form.domain"
@@ -16,19 +16,19 @@
             placeholder="www.google.com"
             required
           />
-          <span class="hint">直接輸入域名，不需要加 http:// 或 https://</span>
+          <span class="hint">{{ t('siteForm.domainHint') }}</span>
         </div>
         <div class="form-group">
-          <label>所屬群組（可多選）</label>
+          <label>{{ t('siteForm.groups') }}</label>
           <div class="group-checkboxes">
             <label v-for="g in groups" :key="g.id" class="cb-label">
               <input type="checkbox" :value="g.id" v-model="form.groupIds" />
               {{ g.name }}
             </label>
           </div>
-          <span v-if="groups.length === 0" class="hint">尚無群組，請先建立群組</span>
+          <span v-if="groups.length === 0" class="hint">{{ t('siteForm.noGroups') }}</span>
         </div>
-        <div class="form-section-label">協定監控</div>
+        <div class="form-section-label">{{ t('siteForm.protocolMonitoring') }}</div>
         <div class="form-row">
           <div class="form-group checkbox-group">
             <label>
@@ -43,52 +43,52 @@
             </label>
           </div>
         </div>
-        <div class="form-section-label">額外監控</div>
+        <div class="form-section-label">{{ t('siteForm.additionalMonitoring') }}</div>
         <div class="form-row">
           <div class="form-group checkbox-group">
             <label :class="{ disabled: form.checkHttps }">
               <input type="checkbox" v-model="form.checkTls" :disabled="form.checkHttps" />
-              TLS 證書到期
+              {{ t('siteForm.tlsExpiry') }}
             </label>
-            <span v-if="form.checkHttps" class="auto-hint">（HTTPS 已自動啟用）</span>
+            <span v-if="form.checkHttps" class="auto-hint">{{ t('siteForm.httpsAutoEnabled') }}</span>
           </div>
           <div class="form-group checkbox-group">
             <label>
               <input type="checkbox" v-model="form.checkWhois" />
-              WHOIS 域名到期
+              {{ t('siteForm.whoisExpiry') }}
             </label>
           </div>
         </div>
 
-        <div class="form-section-label">檢查間隔與告警</div>
+        <div class="form-section-label">{{ t('siteForm.intervalAlerts') }}</div>
         <div class="form-row">
           <div class="form-group flex-1">
-            <label>HTTP/HTTPS 間隔（秒）</label>
+            <label>{{ t('siteForm.httpInterval') }}</label>
             <input v-model.number="form.httpCheckIntervalSeconds" type="number" min="60" placeholder="300" />
-            <span class="hint">最低 60 秒</span>
+            <span class="hint">{{ t('siteForm.minSeconds') }}</span>
           </div>
           <div class="form-group flex-1">
-            <label>失敗幾次後告警</label>
+            <label>{{ t('siteForm.failureThreshold') }}</label>
             <input v-model.number="form.failureThreshold" type="number" min="1" placeholder="3" />
-            <span class="hint">HTTP/HTTPS 連續失敗次數</span>
+            <span class="hint">{{ t('siteForm.consecFailures') }}</span>
           </div>
         </div>
         <div class="form-row">
           <div class="form-group flex-1">
-            <label>TLS 檢查間隔（天）</label>
+            <label>{{ t('siteForm.tlsInterval') }}</label>
             <input v-model.number="form.tlsCheckIntervalDays" type="number" min="1" placeholder="1" />
-            <span class="hint">最低 1 天</span>
+            <span class="hint">{{ t('siteForm.minDays') }}</span>
           </div>
           <div class="form-group flex-1">
-            <label>WHOIS 檢查間隔（天）</label>
+            <label>{{ t('siteForm.whoisInterval') }}</label>
             <input v-model.number="form.domainCheckIntervalDays" type="number" min="1" placeholder="1" />
-            <span class="hint">最低 1 天</span>
+            <span class="hint">{{ t('siteForm.minDays') }}</span>
           </div>
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-cancel" @click="$emit('close')">取消</button>
+          <button type="button" class="btn btn-cancel" @click="$emit('close')">{{ t('common.cancel') }}</button>
           <button type="submit" class="btn btn-primary" :disabled="submitting">
-            {{ submitting ? '處理中...' : (isEdit ? '更新' : '新增') }}
+            {{ submitting ? t('common.processing') : (isEdit ? t('common.update') : t('common.add')) }}
           </button>
         </div>
       </form>
@@ -98,6 +98,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted, onUnmounted } from 'vue';
+import { t } from '../i18n';
 
 interface GroupItem {
   id: string;

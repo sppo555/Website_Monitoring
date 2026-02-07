@@ -4,31 +4,31 @@
     <div class="modal-content">
       <div class="modal-header">
         <div class="modal-title-row">
-          <h2>📊 檢查歷史 — {{ domain }}</h2>
-          <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+          <h2>{{ t('history.title', { domain }) }}</h2>
+          <button class="btn-close" @click="$emit('close')" :title="t('common.closeEsc')">&times;</button>
         </div>
         <div class="range-bar">
           <button v-for="opt in rangeOptions" :key="opt.value" class="range-btn" :class="{ active: selectedRange === opt.value && !customActive }" @click="customActive = false; changeRange(opt.value)">{{ opt.label }}</button>
           <div class="custom-range">
-            <input v-model="customInput" class="custom-input" placeholder="例: 2h, 3d" @keydown.enter="applyCustom" />
-            <button class="range-btn" :class="{ active: customActive }" @click="applyCustom">自訂</button>
+            <input v-model="customInput" class="custom-input" :placeholder="t('history.customPlaceholder')" @keydown.enter="applyCustom" />
+            <button class="range-btn" :class="{ active: customActive }" @click="applyCustom">{{ t('history.custom') }}</button>
           </div>
-          <span class="sub">共 {{ records.length }} 筆紀錄</span>
+          <span class="sub">{{ t('history.recordCount', { count: records.length }) }}</span>
         </div>
       </div>
 
-      <div v-if="loading" class="loading-sm">載入中...</div>
-      <div v-else-if="records.length === 0" class="empty">尚無檢查紀錄</div>
+      <div v-if="loading" class="loading-sm">{{ t('common.loading') }}</div>
+      <div v-else-if="records.length === 0" class="empty">{{ t('history.empty') }}</div>
       <div v-else class="history-table-wrap">
         <table class="history-table">
           <thead>
             <tr>
-              <th>檢查時間</th>
-              <th>健康</th>
-              <th>HTTP 狀態</th>
-              <th>TLS 剩餘</th>
-              <th>域名剩餘</th>
-              <th>錯誤</th>
+              <th>{{ t('history.colTime') }}</th>
+              <th>{{ t('history.colHealthy') }}</th>
+              <th>{{ t('history.colHttpStatus') }}</th>
+              <th>{{ t('history.colTlsLeft') }}</th>
+              <th>{{ t('history.colDomainLeft') }}</th>
+              <th>{{ t('history.colError') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -41,10 +41,10 @@
               </td>
               <td :class="httpClass(r.httpStatus)">{{ r.httpStatus ?? '—' }}</td>
               <td :class="tlsClass(r.tlsDaysLeft)">
-                {{ r.tlsDaysLeft != null ? r.tlsDaysLeft + ' 天' : '—' }}
+                {{ r.tlsDaysLeft != null ? r.tlsDaysLeft + ' ' + t('common.days') : '—' }}
               </td>
               <td :class="whoisClass(r.domainDaysLeft)">
-                {{ r.domainDaysLeft != null ? r.domainDaysLeft + ' 天' : '—' }}
+                {{ r.domainDaysLeft != null ? r.domainDaysLeft + ' ' + t('common.days') : '—' }}
               </td>
               <td class="col-err">{{ r.errorDetails || '—' }}</td>
             </tr>
@@ -53,7 +53,7 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-cancel" @click="$emit('close')">關閉</button>
+        <button class="btn btn-cancel" @click="$emit('close')">{{ t('common.close') }}</button>
       </div>
     </div>
   </div>
@@ -62,6 +62,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { t, getDateLocale } from '../i18n';
 
 interface CheckRecord {
   id: string;
@@ -115,7 +116,7 @@ function changeRange(range: string) {
 function applyCustom() {
   const v = customInput.value.trim();
   if (!v) return;
-  if (!/^\d+(h|d)$/.test(v)) { alert('格式範例: 2h, 3d, 48h（最大 14d）'); return; }
+  if (!/^\d+(h|d)$/.test(v)) { alert(t('history.customFormatAlert')); return; }
   customActive.value = true;
   selectedRange.value = v;
   fetchHistory();
@@ -128,7 +129,7 @@ onMounted(() => window.addEventListener('keydown', onEsc));
 onUnmounted(() => window.removeEventListener('keydown', onEsc));
 
 function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
+  return new Date(dateStr).toLocaleString(getDateLocale());
 }
 
 function httpClass(status: number | null) {

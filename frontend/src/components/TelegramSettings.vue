@@ -2,12 +2,12 @@
 <template>
   <div class="tg-settings">
     <div class="tg-header" @click="expanded = !expanded">
-      <h3>🔔 Telegram 告警設定</h3>
+      <h3>{{ t('tg.title') }}</h3>
       <span class="toggle-icon">{{ expanded ? '▲' : '▼' }}</span>
     </div>
 
     <div v-if="expanded" class="tg-body">
-      <div v-if="loading" class="loading-sm">載入中...</div>
+      <div v-if="loading" class="loading-sm">{{ t('common.loading') }}</div>
       <template v-else>
         <div class="form-row-inline">
           <div class="form-group flex-1">
@@ -30,19 +30,19 @@
 
         <div class="form-row-inline">
           <div class="form-group">
-            <label>TLS 證書告警天數</label>
+            <label>{{ t('tg.tlsAlertDays') }}</label>
             <input v-model.number="config.tlsAlertDays" type="number" min="1" />
-            <span class="hint">證書剩餘天數 ≤ 此值時發送告警</span>
+            <span class="hint">{{ t('tg.tlsAlertHint') }}</span>
           </div>
           <div class="form-group">
-            <label>域名到期告警天數</label>
+            <label>{{ t('tg.domainAlertDays') }}</label>
             <input v-model.number="config.domainAlertDays" type="number" min="1" />
-            <span class="hint">域名剩餘天數 ≤ 此值時發送告警</span>
+            <span class="hint">{{ t('tg.domainAlertHint') }}</span>
           </div>
           <div class="form-group checkbox-group-tg">
             <label>
               <input type="checkbox" v-model="config.enabled" />
-              啟用 Telegram 告警
+              {{ t('tg.enable') }}
             </label>
           </div>
         </div>
@@ -53,10 +53,10 @@
           </div>
           <div class="btn-group">
             <button class="btn btn-outline-sm" @click="testTelegram" :disabled="testing">
-              {{ testing ? '測試中...' : '📤 發送測試訊息' }}
+              {{ testing ? t('tg.testing') : t('tg.sendTest') }}
             </button>
             <button class="btn btn-primary-sm" @click="saveConfig" :disabled="saving">
-              {{ saving ? '儲存中...' : '💾 儲存設定' }}
+              {{ saving ? t('common.saving') : t('tg.saveSettings') }}
             </button>
           </div>
         </div>
@@ -68,6 +68,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
 import axios from 'axios';
+import { t } from '../i18n';
 
 const ALERT_API = '/api/alert';
 
@@ -108,10 +109,10 @@ async function saveConfig() {
   statusMsg.value = '';
   try {
     await axios.put(`${ALERT_API}/config`, { ...config });
-    statusMsg.value = '✅ 設定已儲存';
+    statusMsg.value = t('tg.saved');
     statusOk.value = true;
   } catch (err) {
-    statusMsg.value = '❌ 儲存失敗';
+    statusMsg.value = t('tg.saveFailed');
     statusOk.value = false;
   } finally {
     saving.value = false;
@@ -129,7 +130,7 @@ async function testTelegram() {
     statusMsg.value = data.success ? '✅ ' + data.message : '❌ ' + data.message;
     statusOk.value = data.success;
   } catch (err: any) {
-    statusMsg.value = '❌ 測試失敗';
+    statusMsg.value = t('tg.testFailed');
     statusOk.value = false;
   } finally {
     testing.value = false;

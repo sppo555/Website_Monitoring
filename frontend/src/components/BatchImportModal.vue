@@ -3,38 +3,38 @@
   <div class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header-row">
-        <h2>批量 JSON 匯入</h2>
-        <button class="btn-close" @click="$emit('close')" title="關閉 (ESC)">&times;</button>
+        <h2>{{ t('batch.title') }}</h2>
+        <button class="btn-close" @click="$emit('close')" :title="t('common.closeEsc')">&times;</button>
       </div>
-      <p class="hint">請貼上 JSON 格式的網站陣列，未填寫的欄位會使用預設值。</p>
+      <p class="hint">{{ t('batch.hint') }}</p>
       <div class="field-reference">
-        <strong>欄位說明：</strong>
+        <strong>{{ t('batch.fieldRef') }}</strong>
         <table class="ref-table">
-          <tr><td><b>domain</b> *</td><td>域名（必填）</td></tr>
-          <tr><td>checkHttp</td><td>HTTP 監控（預設 true）</td></tr>
-          <tr><td>checkHttps</td><td>HTTPS 監控（預設 true）</td></tr>
-          <tr><td>checkTls</td><td>TLS 證書到期（預設 true）</td></tr>
-          <tr><td>checkWhois</td><td>WHOIS 域名到期（預設 true）</td></tr>
-          <tr><td>httpCheckIntervalSeconds</td><td>HTTP 間隔秒（預設 300，最低 60）</td></tr>
-          <tr><td>tlsCheckIntervalDays</td><td>TLS 檢查間隔天（預設 1，最低 1）</td></tr>
-          <tr><td>domainCheckIntervalDays</td><td>WHOIS 檢查間隔天（預設 1，最低 1）</td></tr>
-          <tr><td>failureThreshold</td><td>失敗幾次後告警（預設 3，最低 1）</td></tr>
-          <tr><td>groupIds</td><td>所屬群組 ID 陣列（可選）</td></tr>
+          <tr><td><b>domain</b> *</td><td>{{ t('batch.fieldDomain') }}</td></tr>
+          <tr><td>checkHttp</td><td>{{ t('batch.fieldCheckHttp') }}</td></tr>
+          <tr><td>checkHttps</td><td>{{ t('batch.fieldCheckHttps') }}</td></tr>
+          <tr><td>checkTls</td><td>{{ t('batch.fieldCheckTls') }}</td></tr>
+          <tr><td>checkWhois</td><td>{{ t('batch.fieldCheckWhois') }}</td></tr>
+          <tr><td>httpCheckIntervalSeconds</td><td>{{ t('batch.fieldHttpInterval') }}</td></tr>
+          <tr><td>tlsCheckIntervalDays</td><td>{{ t('batch.fieldTlsInterval') }}</td></tr>
+          <tr><td>domainCheckIntervalDays</td><td>{{ t('batch.fieldDomainInterval') }}</td></tr>
+          <tr><td>failureThreshold</td><td>{{ t('batch.fieldFailureThreshold') }}</td></tr>
+          <tr><td>groupIds</td><td>{{ t('batch.fieldGroupIds') }}</td></tr>
         </table>
       </div>
       <div class="format-example">
-        <strong>JSON 範例（支援陣列或物件格式）：</strong>
+        <strong>{{ t('batch.exampleTitle') }}</strong>
         <pre>{{ exampleJson }}</pre>
       </div>
       <div class="form-group">
-        <label for="groupId">匯入到群組（可選，個別網站也可覆蓋）</label>
+        <label for="groupId">{{ t('batch.groupLabel') }}</label>
         <select id="groupId" v-model="selectedGroupId">
-          <option :value="null">-- 未分組 --</option>
+          <option :value="null">{{ t('batch.noGroup') }}</option>
           <option v-for="g in groups" :key="g.id" :value="g.id">{{ g.name }}</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="json">JSON 內容</label>
+        <label for="json">{{ t('batch.jsonLabel') }}</label>
         <textarea
           id="json"
           v-model="jsonText"
@@ -44,9 +44,9 @@
       </div>
       <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
       <div class="form-actions">
-        <button type="button" class="btn btn-cancel" @click="$emit('close')">取消</button>
+        <button type="button" class="btn btn-cancel" @click="$emit('close')">{{ t('common.cancel') }}</button>
         <button class="btn btn-primary" :disabled="submitting" @click="handleImport">
-          {{ submitting ? '匯入中...' : '批量匯入' }}
+          {{ submitting ? t('batch.importing') : t('batch.import') }}
         </button>
       </div>
     </div>
@@ -55,6 +55,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { t } from '../i18n';
 
 interface GroupItem {
   id: string;

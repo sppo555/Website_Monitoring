@@ -1,26 +1,26 @@
 <!-- frontend/src/components/AuditLogPage.vue -->
 <template>
   <div class="audit-page">
-    <h2>📋 操作紀錄</h2>
+    <h2>{{ t('audit.title') }}</h2>
     <div class="audit-toolbar">
       <div class="tab-group">
-        <button class="tab-btn" :class="{ active: viewMode === 'mine' }" @click="viewMode = 'mine'; fetchLogs()">我的紀錄</button>
-        <button v-if="isAdminUser" class="tab-btn" :class="{ active: viewMode === 'all' }" @click="viewMode = 'all'; fetchLogs()">全部紀錄</button>
+        <button class="tab-btn" :class="{ active: viewMode === 'mine' }" @click="viewMode = 'mine'; fetchLogs()">{{ t('audit.myRecords') }}</button>
+        <button v-if="isAdminUser" class="tab-btn" :class="{ active: viewMode === 'all' }" @click="viewMode = 'all'; fetchLogs()">{{ t('audit.allRecords') }}</button>
       </div>
       <div class="filter-group">
-        <input v-model="filterAction" class="filter-input" placeholder="篩選動作..." />
-        <input v-model="filterTarget" class="filter-input" placeholder="篩選目標..." />
+        <input v-model="filterAction" class="filter-input" :placeholder="t('audit.filterAction')" />
+        <input v-model="filterTarget" class="filter-input" :placeholder="t('audit.filterTarget')" />
       </div>
     </div>
-    <div v-if="loading" class="loading">載入中...</div>
+    <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
     <table v-else-if="filteredLogs.length > 0" class="audit-table">
       <thead>
         <tr>
-          <th>時間</th>
-          <th v-if="viewMode === 'all'">使用者</th>
-          <th>動作</th>
-          <th>目標</th>
-          <th>詳細</th>
+          <th>{{ t('audit.colTime') }}</th>
+          <th v-if="viewMode === 'all'">{{ t('audit.colUser') }}</th>
+          <th>{{ t('audit.colAction') }}</th>
+          <th>{{ t('audit.colTarget') }}</th>
+          <th>{{ t('audit.colDetails') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -33,7 +33,7 @@
         </tr>
       </tbody>
     </table>
-    <p v-else class="no-data">暫無操作紀錄</p>
+    <p v-else class="no-data">{{ t('audit.noRecords') }}</p>
   </div>
 </template>
 
@@ -41,6 +41,7 @@
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { isAdmin } from '../auth';
+import { t, getDateLocale } from '../i18n';
 
 interface AuditLogItem {
   id: string;
@@ -82,7 +83,7 @@ async function fetchLogs() {
 }
 
 function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('zh-TW');
+  return new Date(dateStr).toLocaleString(getDateLocale());
 }
 
 onMounted(fetchLogs);

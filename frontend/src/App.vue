@@ -5,19 +5,20 @@
     <header>
       <div class="header-inner">
         <div class="header-top">
-          <h1>🖥 Alexander 網站監控系統</h1>
+          <h1>🖥 {{ t('app.title') }}</h1>
           <div class="header-user">
             <span>{{ authState.user?.username }} ({{ authState.user?.role }})</span>
-            <button class="btn-header" @click="showChangePw = true">改密碼</button>
-            <button class="btn-header" @click="handleLogout">登出</button>
+            <button class="btn-header btn-lang" @click="toggleLocale">{{ currentLocale === 'zh-TW' ? 'EN' : '中' }}</button>
+            <button class="btn-header" @click="showChangePw = true">{{ t('app.changePassword') }}</button>
+            <button class="btn-header" @click="handleLogout">{{ t('app.logout') }}</button>
           </div>
         </div>
         <nav class="nav-bar">
-          <button class="nav-btn" :class="{ active: currentPage === 'dashboard' }" @click="currentPage = 'dashboard'">📊 監控儀表板</button>
-          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'users' }" @click="currentPage = 'users'">👥 使用者管理</button>
-          <button class="nav-btn" :class="{ active: currentPage === 'audit' }" @click="currentPage = 'audit'">📋 操作紀錄</button>
-          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'telegram' }" @click="currentPage = 'telegram'">🔔 Telegram 設定</button>
-          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'retention' }" @click="currentPage = 'retention'">⚙️ 系統設定</button>
+          <button class="nav-btn" :class="{ active: currentPage === 'dashboard' }" @click="currentPage = 'dashboard'">{{ t('nav.dashboard') }}</button>
+          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'users' }" @click="currentPage = 'users'">{{ t('nav.users') }}</button>
+          <button class="nav-btn" :class="{ active: currentPage === 'audit' }" @click="currentPage = 'audit'">{{ t('nav.audit') }}</button>
+          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'telegram' }" @click="currentPage = 'telegram'">{{ t('nav.telegram') }}</button>
+          <button v-if="userIsAdmin" class="nav-btn" :class="{ active: currentPage === 'retention' }" @click="currentPage = 'retention'">{{ t('nav.settings') }}</button>
         </nav>
       </div>
     </header>
@@ -42,6 +43,11 @@ import AuditLogPage from './components/AuditLogPage.vue';
 import RetentionSettings from './components/RetentionSettings.vue';
 import ChangePasswordModal from './components/ChangePasswordModal.vue';
 import { authState, isLoggedIn, logout, isAdmin } from './auth';
+import { t, currentLocale, setLocale } from './i18n';
+
+function toggleLocale() {
+  setLocale(currentLocale.value === 'zh-TW' ? 'en' : 'zh-TW');
+}
 
 const loggedIn = ref(isLoggedIn());
 const showChangePw = ref(false);
@@ -97,6 +103,7 @@ h1 {
   transition: background 0.2s;
 }
 .btn-header:hover { background: rgba(255,255,255,0.25); }
+.btn-lang { font-weight: 700; min-width: 32px; text-align: center; }
 .nav-bar {
   display: flex;
   gap: 4px;
