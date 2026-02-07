@@ -86,8 +86,28 @@ export class SiteService implements OnModuleInit {
     return domain.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
   }
 
+  private validateDomainFormat(domain: string): void {
+    if (!domain) throw new BadRequestException('域名不可為空');
+    if (/[^a-zA-Z0-9.\-]/.test(domain)) {
+      throw new BadRequestException(`域名 "${domain}" 格式錯誤：僅允許英文字母、數字、連字號 (-) 和點 (.)`);
+    }
+    if (!domain.includes('.')) {
+      throw new BadRequestException(`域名 "${domain}" 格式錯誤：必須包含至少一個點 (.)`);
+    }
+    const labels = domain.split('.');
+    for (const label of labels) {
+      if (label.length === 0) throw new BadRequestException(`域名 "${domain}" 格式錯誤：不可有連續的點 (..)`);
+      if (label.startsWith('-') || label.endsWith('-')) {
+        throw new BadRequestException(`域名 "${domain}" 格式錯誤：不可以連字號開頭或結尾`);
+      }
+      if (label.length > 63) throw new BadRequestException(`域名 "${domain}" 格式錯誤：每段最多 63 字元`);
+    }
+    if (domain.length > 253) throw new BadRequestException(`域名 "${domain}" 格式錯誤：總長度不可超過 253 字元`);
+  }
+
   async create(siteDto: SiteDto): Promise<any> {
     siteDto.domain = this.stripProtocol(siteDto.domain).trim();
+    this.validateDomainFormat(siteDto.domain);
     const existing = await this.sitesRepository.findOne({ where: { domain: siteDto.domain } });
     if (existing) {
       throw new BadRequestException(`域名 ${siteDto.domain} 已存在`);
@@ -100,9 +120,10 @@ export class SiteService implements OnModuleInit {
   }
 
   async batchCreate(dto: BatchImportDto): Promise<any[]> {
-    // 自動去除 http:// https:// 前綴
+    // 自動去除 http:// https:// 前綴 + 格式驗證
     for (const s of dto.sites) {
       s.domain = this.stripProtocol(s.domain).trim();
+      this.validateDomainFormat(s.domain);
     }
     const domains = dto.sites.map(s => s.domain);
     const uniqueDomains = new Set(domains);

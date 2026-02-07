@@ -116,6 +116,17 @@ function validateSites(sites: any[]): string | null {
     const idx = `第 ${i + 1} 筆`;
     if (typeof s !== 'object' || s === null || Array.isArray(s)) return `${idx}：必須是物件`;
     if (!s.domain || typeof s.domain !== 'string') return `${idx}：缺少 domain 欄位或型別錯誤`;
+    // 域名格式驗證 (RFC 952/1123)
+    const dom = s.domain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
+    if (/[^a-zA-Z0-9.\-]/.test(dom)) return `${idx}：域名 "${s.domain}" 格式錯誤，僅允許英文字母、數字、連字號 (-) 和點 (.)`;
+    if (!dom.includes('.')) return `${idx}：域名 "${s.domain}" 必須包含至少一個點 (.)`;
+    const labels = dom.split('.');
+    for (const lb of labels) {
+      if (lb.length === 0) return `${idx}：域名 "${s.domain}" 不可有連續的點 (..)`;
+      if (lb.startsWith('-') || lb.endsWith('-')) return `${idx}：域名 "${s.domain}" 不可以連字號開頭或結尾`;
+      if (lb.length > 63) return `${idx}：域名 "${s.domain}" 每段最多 63 字元`;
+    }
+    if (dom.length > 253) return `${idx}：域名 "${s.domain}" 總長度不可超過 253 字元`;
     const unknownKeys = Object.keys(s).filter(k => !VALID_FIELDS.has(k));
     if (unknownKeys.length > 0) return `${idx}：不明欄位 ${unknownKeys.join(', ')}`;
     if (s.checkHttp !== undefined && typeof s.checkHttp !== 'boolean') return `${idx}：checkHttp 必須是 boolean`;

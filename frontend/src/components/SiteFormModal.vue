@@ -15,8 +15,10 @@
             type="text"
             placeholder="www.google.com"
             required
+            :class="{ 'input-error': domainError }"
           />
-          <span class="hint">{{ t('siteForm.domainHint') }}</span>
+          <span v-if="domainError" class="error-hint">{{ domainError }}</span>
+          <span v-else class="hint">{{ t('siteForm.domainHint') }}</span>
         </div>
         <div class="form-group">
           <label>{{ t('siteForm.groups') }}</label>
@@ -87,7 +89,7 @@
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-cancel" @click="$emit('close')">{{ t('common.cancel') }}</button>
-          <button type="submit" class="btn btn-primary" :disabled="submitting">
+          <button type="submit" class="btn btn-primary" :disabled="submitting || !!domainError">
             {{ submitting ? t('common.processing') : (isEdit ? t('common.update') : t('common.add')) }}
           </button>
         </div>
@@ -97,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, onUnmounted } from 'vue';
+import { reactive, ref, computed, onMounted, onUnmounted } from 'vue';
 import { t } from '../i18n';
 
 interface GroupItem {
@@ -131,6 +133,28 @@ const emit = defineEmits<{
 
 const submitting = ref(false);
 
+// 域名驗證：僅允許 a-z A-Z 0-9 - . ，符合 RFC 952/1123
+function validateDomain(raw: string): string {
+  const d = raw.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
+  if (!d) return '';
+  if (/[^a-zA-Z0-9.\-]/.test(d)) return t('siteForm.domainInvalidChars');
+  if (!d.includes('.')) return t('siteForm.domainNeedsDot');
+  const labels = d.split('.');
+  for (const label of labels) {
+    if (label.length === 0) return t('siteForm.domainEmptyLabel');
+    if (label.startsWith('-')) return t('siteForm.domainNoLeadingHyphen');
+    if (label.endsWith('-')) return t('siteForm.domainNoTrailingHyphen');
+    if (label.length > 63) return t('siteForm.domainLabelTooLong');
+  }
+  if (d.length > 253) return t('siteForm.domainTooLong');
+  return '';
+}
+
+const domainError = computed(() => {
+  if (!form.domain) return '';
+  return validateDomain(form.domain);
+});
+
 const form = reactive<SiteForm>({
   domain: props.initialData?.domain || '',
   checkHttp: props.initialData?.checkHttp ?? true,
@@ -151,10 +175,11 @@ function onHttpsChange() {
 }
 
 async function handleSubmit() {
-  submitting.value = true;
-  if (form.checkHttps) form.checkTls = true;
   // 自動去除 http:// https:// 前綴
   form.domain = form.domain.replace(/^https?:\/\//i, '').replace(/\/+$/, '').trim();
+  if (validateDomain(form.domain)) return;
+  submitting.value = true;
+  if (form.checkHttps) form.checkTls = true;
   emit('submit', { ...form });
 }
 
@@ -314,6 +339,8 @@ onUnmounted(() => window.removeEventListener('keydown', onEsc));
   opacity: 0.5;
   cursor: not-allowed;
 }
+.input-error { border-color: #e74c3c !important; }
+.error-hint { display: block; margin-top: 4px; font-size: 0.78rem; color: #e74c3c; }
 .flex-1 { flex: 1; min-width: 140px; }
 .group-checkboxes { display: flex; gap: 12px; flex-wrap: wrap; padding: 8px 0; }
 .cb-label { display: flex; align-items: center; gap: 5px; font-size: 0.88rem; color: #555; cursor: pointer; }

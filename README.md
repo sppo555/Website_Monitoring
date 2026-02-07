@@ -1,38 +1,42 @@
-# 🖥 Website Monitoring System
+# 🖥 SiteWatcher — Website Monitoring System
 
 > **[📖 中文版文件 (Chinese Documentation)](./README.zh-TW.md)**
 
-A lightweight website monitoring system built with full-stack TypeScript (NestJS + Vue 3) and Docker, featuring user authentication & RBAC, multi-group domain management, multi-protocol monitoring, Telegram alerts, audit logging, and batch processing.
+A lightweight, full-stack TypeScript website monitoring system (NestJS + Vue 3) deployed via Docker Compose. Features include user authentication & RBAC, multi-group domain management, multi-protocol monitoring (HTTP/HTTPS/TLS/WHOIS), Telegram alerts, audit logging, i18n (English/Chinese), and batch processing.
 
 ## Features
 
 | Feature | Description |
 | :--- | :--- |
-| **User Authentication** | JWT-based login, default admin account (admin/admin) |
-| **Role-Based Access** | 4 roles: `admin` (full access), `allread` (read all), `onlyedit` (edit assigned groups), `onlyread` (read assigned groups) |
+| **User Authentication** | JWT-based login, default admin account (`admin`/`admin`) |
+| **Role-Based Access (RBAC)** | 4 roles: `admin` (full access), `allread` (read all), `onlyedit` (edit assigned groups), `onlyread` (read assigned groups) |
 | **Change Password** | All users can change their own password; admin can change any user's password |
 | **Audit Logging** | All operations (login, CRUD, password changes) are logged; admin views all logs, users view their own |
 | **HTTP Monitoring** | Check target domain HTTP connection status codes |
 | **HTTPS Monitoring** | Check HTTPS status (enabling HTTPS auto-enables TLS check) |
 | **TLS Certificate Check** | Connect to port 443, check SSL certificate remaining days |
 | **WHOIS Domain Expiry** | Query domain WHOIS info, calculate registration expiry |
+| **Immediate Check on Create** | When a site is added (single or batch), HTTP + TLS + WHOIS checks run immediately (non-blocking) |
+| **Carry-Forward Results** | Scheduled checks carry forward the latest TLS/WHOIS values when those checks are not due, so the dashboard always shows data |
 | **Multi-Group Domains** | A domain can belong to multiple groups simultaneously (many-to-many) |
-| **Domain Search** | Search bar to filter domains within the selected group |
-| **Bulk Edit** | Select multiple domains via checkbox and modify monitoring settings in bulk |
+| **Domain Search** | Real-time search bar to filter domains within the selected group |
+| **Bulk Edit** | Select multiple domains via checkbox and modify monitoring settings **including groups** in bulk |
 | **Independent Toggles** | Each domain can independently enable/disable HTTP, HTTPS, TLS, WHOIS |
-| **Duplicate Prevention** | Rejects duplicate domain entries on create and batch import |
-| **JSON Batch Import** | Import multiple domains at once via JSON, with group assignment |
+| **Domain Validation** | RFC 952/1123 compliant: only `a-z`, `0-9`, `-`, `.` allowed; auto-strips `http://`/`https://` prefix; rejects duplicates |
+| **JSON Batch Import** | Import multiple domains at once via JSON, with group assignment and full validation |
 | **Telegram Alerts** | Auto-send Telegram notifications for TLS/domain expiry or HTTP failures; settings stored in DB |
 | **Failure Count Alert** | Only trigger alert after configurable consecutive HTTP failures |
 | **Independent Intervals** | HTTP/HTTPS in seconds (min 60s), TLS/WHOIS in days (min 1 day) |
 | **Batch Processing** | Checks run in batches of 5, with 2s delay between batches |
-| **Flexible Check History** | View check results with selectable time range: 1h / 12h / 24h / 1d / 7d / 14d |
+| **Flexible Check History** | View check results with selectable time range: 1h / 12h / 24h / 1d / 7d / 14d / custom |
 | **Alert Settings Page** | Configure TG Bot Token, Chat ID, and alert thresholds in the web UI (stored in DB) |
 | **Auto Scheduler** | Runs every minute, checks only domains whose interval has elapsed |
 | **Pause/Resume** | Pause or resume monitoring for any individual domain |
 | **Log Retention Management** | Admin can configure auto-cleanup of audit logs and check results (daily cron, configurable retention days) |
+| **i18n (Internationalization)** | Full English and Traditional Chinese support; language toggle persisted in localStorage |
 | **Separate Pages** | Dashboard, User Management, Audit Logs, Telegram Settings, System Settings each on their own page with nav bar |
 | **Data Persistence** | All data stored in PostgreSQL with Docker named volumes — survives `docker compose down && up` |
+| **Timezone Handling** | Backend stores UTC; frontend displays browser's local timezone automatically |
 
 ## Architecture
 
@@ -50,11 +54,11 @@ A lightweight website monitoring system built with full-stack TypeScript (NestJS
 
 | Container | Stack | Purpose |
 | :--- | :--- | :--- |
-| **nginx** | Nginx Alpine | Reverse proxy, forwards API requests to backend |
+| **nginx** | Nginx Alpine | Reverse proxy (Port 80), forwards `/api/*` to backend |
 | **api** | NestJS + TypeORM | REST API, scheduler, checker service, TG alerts |
-| **frontend** | Vue 3 + Vite | Frontend dev server (runs independently) |
-| **db** | PostgreSQL 15 | Data persistence |
-| **redis** | Redis 7 | Reserved for caching/queue |
+| **frontend** | Vue 3 + Vite | Frontend dev server (Port 5173, runs independently) |
+| **db** | PostgreSQL 15 | Data persistence (named volume) |
+| **redis** | Redis 7 | Reserved for caching/queue (named volume) |
 
 > ⚡ Frontend and backend containers run **completely independently**.
 
@@ -76,7 +80,9 @@ Once running:
 | Service | URL |
 | :--- | :--- |
 | Frontend Dashboard | http://localhost:5173 |
-| API (via Nginx) | http://localhost/sites |
+| API (via Nginx) | http://localhost/api/sites |
+
+Default login: **admin** / **admin** (change immediately after first login).
 
 ### Stop Services
 
@@ -84,11 +90,20 @@ Once running:
 docker compose down
 ```
 
+> Data is persisted in Docker named volumes (`postgres_data`, `redis_data`). To remove all data: `docker compose down -v`.
+
 ## Usage
 
 ### 1. Add a Monitored Domain
 
-Click "+ New Site", enter a domain (e.g. `www.google.com`) — **no** `http://` or `https://` prefix needed.
+Click "+ New Site" and enter a domain (e.g. `www.google.com`).
+
+**Domain input rules (RFC 952/1123):**
+- Enter the domain only — `http://` / `https://` prefixes are **auto-stripped**
+- Only letters (`a-z`), numbers (`0-9`), hyphens (`-`), and dots (`.`) are allowed
+- Cannot start or end with a hyphen
+- Each label (between dots) max 63 characters, total max 253 characters
+- Invalid input shows a real-time error message; the submit button is disabled
 
 Select monitoring protocols:
 - **HTTP** — Monitor HTTP connection status
@@ -102,13 +117,22 @@ Configure intervals and alert threshold:
 - **WHOIS Check Interval** — Check frequency in days (min 1, default 1)
 - **Failure Threshold** — Consecutive HTTP failures before alerting (default 3)
 
-> Duplicate domains are rejected — each domain can only be added once.
+> Duplicate domains are rejected — each domain can only be added once. If a duplicate is detected, the error is shown and the form remains editable (not stuck).
 
 ### 2. Domain Groups
 
 Type a group name and press `+` to create a new group. Domains can belong to **multiple groups** — select groups via checkboxes when adding/editing. Click group tabs to filter.
 
-### 3. JSON Batch Import
+### 3. Bulk Edit
+
+Select multiple domains via checkboxes, then click "Bulk Edit". You can modify:
+- HTTP / HTTPS / TLS / WHOIS toggles
+- HTTP interval, failure threshold
+- **Group assignment** (set all selected domains to the same groups)
+
+Only checked fields are applied; unchecked fields keep their original values.
+
+### 4. JSON Batch Import
 
 Click "JSON Batch Import" and paste:
 
@@ -148,7 +172,7 @@ Or a plain array:
 
 | Field | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `domain` | string | *(required)* | Domain name, without http/https prefix |
+| `domain` | string | *(required)* | Domain name (auto-strips `http://`/`https://`, validated per RFC) |
 | `checkHttp` | boolean | `true` | Monitor HTTP |
 | `checkHttps` | boolean | `true` | Monitor HTTPS (auto-enables TLS) |
 | `checkTls` | boolean | `true` | Check TLS certificate expiry |
@@ -159,21 +183,21 @@ Or a plain array:
 | `failureThreshold` | number | `3` | Consecutive HTTP failures before alert |
 | `groupIds` | string[] | `[]` | Assign to groups (supports multiple) |
 
-### 4. Check History
+### 5. Check History
 
-Each domain card has a 📊 button. Click it to view all check results from the last 24 hours in a table showing: timestamp, health status, HTTP status code, TLS days left, domain days left, and error details.
+Each domain card has a 📊 button. Click it to view check results with selectable time range (1h / 12h / 24h / 1d / 7d / 14d / custom). The table shows: timestamp, health status, HTTP status code, TLS days left, domain days left, and error details.
 
-### 5. Telegram Alert Settings
+### 6. Telegram Alert Settings
 
-Expand the "🔔 Telegram Alert Settings" panel at the top of the page:
+Navigate to the "Telegram Settings" page via the nav bar:
 
 1. Enter **Bot Token** (from [@BotFather](https://t.me/BotFather))
 2. Enter **Chat ID** (personal or group/channel ID)
 3. Set **TLS alert days** (default 14) and **Domain alert days** (default 30)
 4. Check "Enable Telegram Alerts"
-5. Click "💾 Save Settings"
+5. Click "Save Settings"
 
-Click "📤 Send Test Message" to verify connectivity.
+Click "Send Test Message" to verify connectivity.
 
 **Expiry alert example:**
 
@@ -202,6 +226,10 @@ Click "📤 Send Test Message" to verify connectivity.
 ⚠️ 2 domains with consecutive failures
 ```
 
+### 7. Language Switch
+
+Click the language button (🌐 EN / CN) in the top-right corner of the nav bar to toggle between English and Traditional Chinese. The preference is saved in `localStorage`.
+
 ## Batch Processing
 
 To prevent overload when monitoring hundreds of domains:
@@ -209,6 +237,8 @@ To prevent overload when monitoring hundreds of domains:
 - **5 domains per batch**, processed concurrently
 - **2-second delay** between batches
 - Each domain's HTTP/HTTPS, TLS, WHOIS checks have **independent intervals** — checks that aren't due are skipped
+- TLS/WHOIS values are **carried forward** from the last check when not due, ensuring dashboard always shows data
+- Newly added sites receive an **immediate full check** (HTTP + TLS + WHOIS) — no need to wait for the next scheduler cycle
 - All state (last check time, failure count) is **persisted in DB** — survives Docker restarts
 
 ## API Reference
@@ -217,59 +247,98 @@ To prevent overload when monitoring hundreds of domains:
 
 | Method | Path | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/sites` | Admin/Editor | Add a monitored domain (rejects duplicates) |
-| `POST` | `/sites/batch` | Admin/Editor | Batch import domains (rejects duplicates) |
-| `GET` | `/sites` | JWT | Get all domains (with groups + latest result) |
-| `GET` | `/sites/:id` | JWT | Get a single domain |
-| `GET` | `/sites/:id/history?range=` | JWT | Get check history (1h/12h/24h/1d/7d/14d) |
-| `PUT` | `/sites/bulk` | Admin/Editor | Bulk update monitoring settings |
-| `PUT` | `/sites/:id` | Admin/Editor | Update domain settings |
-| `PUT` | `/sites/:id/status/:status` | Admin/Editor | Toggle status (active/paused) |
-| `DELETE` | `/sites/:id` | Admin | Delete a domain |
+| `POST` | `/api/sites` | Admin/Editor | Add a monitored domain (validates format, rejects duplicates, triggers immediate check) |
+| `POST` | `/api/sites/batch` | Admin/Editor | Batch import domains (validates format, rejects duplicates, triggers immediate checks) |
+| `GET` | `/api/sites` | JWT | Get all domains (with groups + latest result) |
+| `GET` | `/api/sites/:id` | JWT | Get a single domain |
+| `GET` | `/api/sites/:id/history?range=` | JWT | Get check history (1h/12h/24h/1d/7d/14d) |
+| `PUT` | `/api/sites/bulk` | Admin/Editor | Bulk update monitoring settings (including groups) |
+| `PUT` | `/api/sites/:id` | Admin/Editor | Update domain settings |
+| `PUT` | `/api/sites/:id/status/:status` | Admin/Editor | Toggle status (active/paused) |
+| `DELETE` | `/api/sites/:id` | Admin | Delete a domain |
 
 ### Groups API
 
-| Method | Path | Description |
-| :--- | :--- | :--- |
-| `POST` | `/groups` | Create a group |
-| `GET` | `/groups` | Get all groups (with domains) |
-| `GET` | `/groups/:id` | Get a single group |
-| `PUT` | `/groups/:id` | Update a group |
-| `DELETE` | `/groups/:id` | Delete a group (domains become ungrouped) |
+| Method | Path | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/groups` | Admin | Create a group |
+| `GET` | `/api/groups` | JWT | Get all groups (with domains) |
+| `GET` | `/api/groups/:id` | JWT | Get a single group |
+| `PUT` | `/api/groups/:id` | Admin | Update a group |
+| `DELETE` | `/api/groups/:id` | Admin | Delete a group (domains become ungrouped) |
 
 ### Auth API
 
 | Method | Path | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/login` | None | Login (returns JWT + user info) |
-| `GET` | `/auth/me` | JWT | Get current user info |
-| `PUT` | `/auth/change-password` | JWT | Change own password |
-| `GET` | `/auth/users` | Admin | List all users |
-| `POST` | `/auth/users` | Admin | Create a user |
-| `PUT` | `/auth/users/:id` | Admin | Update user (role, password, groups) |
-| `DELETE` | `/auth/users/:id` | Admin | Delete a user |
+| `POST` | `/api/auth/login` | None | Login (returns JWT + user info) |
+| `GET` | `/api/auth/me` | JWT | Get current user info |
+| `PUT` | `/api/auth/change-password` | JWT | Change own password |
+| `GET` | `/api/auth/users` | Admin | List all users |
+| `POST` | `/api/auth/users` | Admin | Create a user |
+| `PUT` | `/api/auth/users/:id` | Admin | Update user (role, password, groups) |
+| `DELETE` | `/api/auth/users/:id` | Admin | Delete a user |
 
 ### Audit API
 
 | Method | Path | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/audit` | Admin | Get all audit logs |
-| `GET` | `/audit/me` | JWT | Get current user's audit logs |
+| `GET` | `/api/audit` | Admin | Get all audit logs |
+| `GET` | `/api/audit/me` | JWT | Get current user's audit logs |
 
 ### Alert API
 
 | Method | Path | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/alert/config` | JWT | Get alert configuration |
-| `PUT` | `/alert/config` | Admin | Update alert configuration |
-| `POST` | `/alert/test` | Admin | Send Telegram test message |
+| `GET` | `/api/alert/config` | JWT | Get alert configuration |
+| `PUT` | `/api/alert/config` | Admin | Update alert configuration |
+| `POST` | `/api/alert/test` | Admin | Send Telegram test message |
 
 ### Retention API
 
 | Method | Path | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/retention/config` | JWT | Get retention settings |
-| `PUT` | `/retention/config` | Admin | Update retention settings (enable/disable auto-cleanup, set retention days) |
+| `GET` | `/api/retention/config` | JWT | Get retention settings |
+| `PUT` | `/api/retention/config` | Admin | Update retention settings (enable/disable auto-cleanup, set retention days) |
+
+## Project Structure
+
+```
+Website_Monitoring/
+├── docker-compose.yml          # Docker Compose orchestration
+├── nginx/
+│   └── default.conf            # Nginx reverse proxy config
+├── backend-ts/                 # NestJS backend
+│   └── src/
+│       ├── app.module.ts       # Root module
+│       ├── auth/               # Authentication (JWT, RBAC, users)
+│       ├── site/               # Sites CRUD, check results, entities
+│       ├── group/              # Group management
+│       ├── checker/            # Checker service & module (HTTP/TLS/WHOIS)
+│       ├── scheduler/          # Cron scheduler (every minute)
+│       ├── alert/              # Telegram alert service & config
+│       ├── audit/              # Audit logging
+│       └── retention/          # Log retention management
+├── frontend/                   # Vue 3 frontend
+│   └── src/
+│       ├── App.vue             # Main layout with nav bar
+│       ├── auth.ts             # Auth state management
+│       ├── i18n/               # Internationalization (zh-TW, en)
+│       └── components/         # Vue components
+│           ├── LoginPage.vue
+│           ├── SiteList.vue
+│           ├── SiteFormModal.vue
+│           ├── BatchImportModal.vue
+│           ├── BulkEditModal.vue
+│           ├── HistoryModal.vue
+│           ├── TelegramSettings.vue
+│           ├── UserManagement.vue
+│           ├── ChangePasswordModal.vue
+│           ├── AuditLogPage.vue
+│           ├── AuditLogPanel.vue
+│           └── RetentionSettings.vue
+└── README.md / README.zh-TW.md
+```
 
 ## Docker Compose Services
 
@@ -278,14 +347,15 @@ services:
   nginx:        # Nginx reverse proxy (Port 80)
   frontend:     # Vue 3 frontend dev server (Port 5173), runs independently
   api:          # NestJS backend API (Port 3000, internal only)
-  db:           # PostgreSQL 15 database
-  redis:        # Redis 7 cache
+  db:           # PostgreSQL 15 database (named volume: postgres_data)
+  redis:        # Redis 7 cache (named volume: redis_data)
 ```
 
 ## Tech Stack
 
-- **Backend:** NestJS, TypeORM, PostgreSQL, Redis, Passport.js, JWT, bcryptjs, axios, whois-json
-- **Frontend:** Vue 3, Vite, axios
-- **Deployment:** Docker Compose, Nginx (persistent volumes for DB & Redis)
-- **Auth:** JWT + Role-Based Access Control (admin/allread/onlyedit/onlyread)
+- **Backend:** NestJS, TypeORM, PostgreSQL, Redis, Passport.js, JWT, bcryptjs, axios, whois-json, tls, @nestjs/schedule
+- **Frontend:** Vue 3 (Composition API), Vite, axios, custom i18n
+- **Deployment:** Docker Compose, Nginx reverse proxy, persistent named volumes
+- **Auth:** JWT + Role-Based Access Control (admin / allread / onlyedit / onlyread)
 - **Alerts:** Telegram Bot API
+- **Timezone:** Backend stores UTC, frontend displays browser local time
