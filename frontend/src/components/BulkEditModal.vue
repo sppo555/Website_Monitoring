@@ -34,6 +34,10 @@
       </div>
       <div class="bulk-field bulk-field-groups">
         <label><input type="checkbox" v-model="fields.groupIds.enabled" /> {{ t('bulk.groups') }}</label>
+        <div v-if="fields.groupIds.enabled" class="group-mode">
+          <label class="radio-label"><input type="radio" value="replace" v-model="groupMode" /> {{ t('bulk.groupModeReplace') }}</label>
+          <label class="radio-label"><input type="radio" value="add" v-model="groupMode" /> {{ t('bulk.groupModeAdd') }}</label>
+        </div>
         <div v-if="fields.groupIds.enabled" class="group-checkboxes">
           <label v-for="g in groups" :key="g.id" class="cb-label">
             <input type="checkbox" :value="g.id" v-model="fields.groupIds.value" />
@@ -77,6 +81,7 @@ const fields = reactive({
   failureThreshold: { enabled: false, value: 3 },
   groupIds: { enabled: false, value: [] as string[] },
 });
+const groupMode = ref<'replace' | 'add'>('replace');
 
 async function save() {
   error.value = '';
@@ -87,7 +92,10 @@ async function save() {
   if (fields.checkWhois.enabled) body.checkWhois = fields.checkWhois.value;
   if (fields.httpInterval.enabled) body.httpCheckIntervalSeconds = fields.httpInterval.value;
   if (fields.failureThreshold.enabled) body.failureThreshold = fields.failureThreshold.value;
-  if (fields.groupIds.enabled) body.groupIds = fields.groupIds.value;
+  if (fields.groupIds.enabled) {
+    body.groupIds = fields.groupIds.value;
+    body.groupMode = groupMode.value;
+  }
 
   saving.value = true;
   try {
@@ -119,6 +127,9 @@ async function save() {
 .btn-save { background: #4361ee; color: #fff; }
 .btn-save:disabled { opacity: 0.6; }
 .bulk-field-groups { flex-direction: column; align-items: flex-start; }
+.group-mode { display: flex; gap: 14px; padding: 4px 0 0 24px; }
+.radio-label { display: flex; align-items: center; gap: 5px; font-size: 0.82rem; color: #555; cursor: pointer; }
+.radio-label input[type="radio"] { accent-color: #4361ee; }
 .group-checkboxes { display: flex; gap: 10px; flex-wrap: wrap; padding: 4px 0 0 24px; }
 .cb-label { display: flex; align-items: center; gap: 5px; font-size: 0.88rem; color: #555; cursor: pointer; }
 .cb-label input[type="checkbox"] { width: 15px; height: 15px; accent-color: #4361ee; }

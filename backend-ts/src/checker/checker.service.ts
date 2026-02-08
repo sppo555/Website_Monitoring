@@ -73,6 +73,7 @@ export class CheckerService {
     const now = new Date();
     const result = new SiteCheckResult();
     result.siteId = site.id;
+    result.domain = site.domain;
     result.isHealthy = true;
     let httpFailed = false;
 
@@ -187,6 +188,7 @@ export class CheckerService {
     const now = new Date();
     const result = new SiteCheckResult();
     result.siteId = site.id;
+    result.domain = site.domain;
     result.isHealthy = true;
 
     // HTTP/HTTPS

@@ -31,6 +31,7 @@
             {{ t('site.selectAll') }}
           </label>
           <button v-if="selectedIds.length > 0" class="btn btn-warning" @click="showBulkEdit = true">{{ t('site.bulkEdit') }} ({{ selectedIds.length }})</button>
+          <button v-if="selectedIds.length > 0 && userIsAdmin" class="btn btn-danger-bulk" @click="bulkDelete">{{ t('site.bulkDelete') }} ({{ selectedIds.length }})</button>
           <button v-if="selectedIds.length > 0" class="btn btn-export" @click="exportSites(selectedIds)">{{ t('site.exportSelected', { count: selectedIds.length }) }}</button>
           <button v-else class="btn btn-export" @click="exportSites()" :disabled="sites.length === 0">{{ t('site.export') }}</button>
           <button class="btn btn-secondary" @click="showBatchModal = true">{{ t('site.batchImport') }}</button>
@@ -268,6 +269,15 @@ async function deleteSite(site: Site) {
   try { await axios.delete(`${API_BASE}/${site.id}`); await fetchSites(); } catch (err) { console.error('刪除失敗:', err); }
 }
 
+async function bulkDelete() {
+  if (!confirm(t('site.confirmBulkDelete', { count: selectedIds.value.length }))) return;
+  try {
+    await axios.delete(`${API_BASE}/bulk`, { data: { siteIds: selectedIds.value } });
+    selectedIds.value = [];
+    await fetchSites();
+  } catch (err) { console.error('批量刪除失敗:', err); alert('批量刪除失敗'); }
+}
+
 async function exportSites(ids?: string[]) {
   try {
     const params = ids && ids.length > 0 ? `?ids=${ids.join(',')}` : '';
@@ -325,6 +335,8 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 .btn-export { background: #17a2b8; color: #fff; }
 .btn-export:hover { background: #138496; }
 .btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-danger-bulk { background: #e74c3c; color: #fff; }
+.btn-danger-bulk:hover { background: #c0392b; }
 .loading, .empty-state { text-align: center; padding: 60px 20px; color: #888; font-size: 1.1rem; }
 .empty-state p { margin: 4px 0; }
 .site-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }

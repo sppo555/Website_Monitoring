@@ -45,6 +45,8 @@ export default {
   'site.deleteGroup': 'Delete Group',
   'site.searchPlaceholder': '🔍 Search domain...',
   'site.bulkEdit': 'Bulk Edit',
+  'site.bulkDelete': 'Bulk Delete',
+  'site.confirmBulkDelete': 'Delete these {count} domains? This action cannot be undone.',
   'site.batchImport': 'JSON Batch Import',
   'site.export': 'JSON Export',
   'site.exportSelected': 'Export Selected ({count})',
@@ -142,6 +144,8 @@ export default {
   'bulk.httpIntervalSec': 'HTTP Interval (sec)',
   'bulk.failureThreshold': 'Failure Threshold',
   'bulk.groups': 'Groups',
+  'bulk.groupModeReplace': 'Replace (overwrite existing groups)',
+  'bulk.groupModeAdd': 'Add (keep existing groups)',
   'bulk.apply': 'Apply Changes',
   'bulk.failed': 'Bulk edit failed',
 

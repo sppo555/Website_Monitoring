@@ -45,6 +45,8 @@ export default {
   'site.deleteGroup': '刪除群組',
   'site.searchPlaceholder': '🔍 搜尋域名...',
   'site.bulkEdit': '批量修改',
+  'site.bulkDelete': '批量刪除',
+  'site.confirmBulkDelete': '確定要刪除這 {count} 個域名嗎？此操作無法復原。',
   'site.batchImport': 'JSON 批量匯入',
   'site.export': 'JSON 匯出',
   'site.exportSelected': '匯出勾選 ({count})',
@@ -142,6 +144,8 @@ export default {
   'bulk.httpIntervalSec': 'HTTP 間隔 (秒)',
   'bulk.failureThreshold': '失敗門檻',
   'bulk.groups': '所屬群組',
+  'bulk.groupModeReplace': '覆蓋（取代現有群組）',
+  'bulk.groupModeAdd': '新增（保留現有群組）',
   'bulk.apply': '套用修改',
   'bulk.failed': '批量修改失敗',
 

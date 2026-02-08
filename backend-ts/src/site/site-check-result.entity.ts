@@ -11,6 +11,10 @@ export class SiteCheckResult {
   @Index() // 建立索引以加快查詢速度
   siteId!: string;
 
+  @Column({ nullable: true })
+  @Index()
+  domain!: string; // 記錄當次檢查時的域名
+
   @ManyToOne(() => Site)
   @JoinColumn({ name: 'siteId' })
   site!: Site;

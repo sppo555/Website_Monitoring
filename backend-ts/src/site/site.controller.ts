@@ -130,6 +130,15 @@ export class SiteController {
     return result;
   }
 
+  @Delete('bulk')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  async bulkRemove(@Request() req: any, @Body() body: { siteIds: string[] }) {
+    const count = await this.siteService.bulkRemove(body.siteIds);
+    await this.auditService.log(req.user.id, req.user.username, 'bulk_delete_sites', `${count} sites`);
+    return { deleted: count };
+  }
+
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('admin')

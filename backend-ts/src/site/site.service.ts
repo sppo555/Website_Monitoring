@@ -38,6 +38,7 @@ export interface BulkUpdateDto {
   domainCheckIntervalDays?: number;
   failureThreshold?: number;
   groupIds?: string[];
+  groupMode?: 'replace' | 'add';
 }
 
 @Injectable()
@@ -74,6 +75,21 @@ export class SiteService implements OnModuleInit {
         await this.sitesRepository.save(site);
       }
       this.logger.log(`已建立預設監控域名: ${seedDomains.join(', ')}`);
+    }
+
+    // Backfill: 舊紀錄若缺少 domain 欄位，用對應 site 的當前 domain 補填
+    const nullDomainCount = await this.checkResultRepository
+      .createQueryBuilder('r')
+      .where('r.domain IS NULL')
+      .getCount();
+    if (nullDomainCount > 0) {
+      await this.checkResultRepository
+        .createQueryBuilder()
+        .update(SiteCheckResult)
+        .set({ domain: () => '(SELECT s.domain FROM sites s WHERE s.id = site_check_results."siteId")' })
+        .where('domain IS NULL')
+        .execute();
+      this.logger.log(`已補填 ${nullDomainCount} 筆歷史紀錄的 domain 欄位`);
     }
   }
 
@@ -202,15 +218,14 @@ export class SiteService implements OnModuleInit {
       site.groups = await this.resolveGroups(groupIds);
     }
 
-    // 域名變更：清除所有舊檢查紀錄 + 重置計數器
+    // 域名變更：重置計數器（紀錄保留，按 domain 篩選歷史）
     const domainChanged = siteDto.domain && siteDto.domain !== oldDomain;
     if (domainChanged) {
-      await this.checkResultRepository.delete({ siteId: id });
       site.consecutiveFailures = 0;
       site.lastHttpCheck = null;
       site.lastTlsCheck = null;
       site.lastWhoisCheck = null;
-      this.logger.log(`域名已變更: ${oldDomain} → ${siteDto.domain}，已清除歷史紀錄`);
+      this.logger.log(`域名已變更: ${oldDomain} → ${siteDto.domain}，計數器已重置`);
     }
 
     await this.sitesRepository.save(site);
@@ -218,21 +233,41 @@ export class SiteService implements OnModuleInit {
   }
 
   async bulkUpdate(dto: BulkUpdateDto): Promise<Site[]> {
-    const { siteIds, groupIds, ...updates } = dto;
+    const { siteIds, groupIds, groupMode, ...updates } = dto;
     if (!siteIds || siteIds.length === 0) {
       throw new BadRequestException('siteIds is required');
     }
     const sites = await this.sitesRepository.find({ where: { id: In(siteIds) }, relations: ['groups'] });
     const resolvedGroups = groupIds !== undefined ? await this.resolveGroups(groupIds) : undefined;
-    // 逐筆 save 確保 ManyToMany join table 正確更新
+    const mode = groupMode || 'replace';
     for (const site of sites) {
       Object.assign(site, updates);
       if (resolvedGroups !== undefined) {
-        site.groups = [...resolvedGroups];
+        if (mode === 'add') {
+          const existingIds = new Set(site.groups.map(g => g.id));
+          const merged = [...site.groups];
+          for (const g of resolvedGroups) {
+            if (!existingIds.has(g.id)) merged.push(g);
+          }
+          site.groups = merged;
+        } else {
+          site.groups = [...resolvedGroups];
+        }
       }
       await this.sitesRepository.save(site);
     }
-    return sites;
+    return this.sitesRepository.find({ where: { id: In(siteIds) }, relations: ['groups'] });
+  }
+
+  async bulkRemove(siteIds: string[]): Promise<number> {
+    if (!siteIds || siteIds.length === 0) {
+      throw new BadRequestException('siteIds is required');
+    }
+    for (const id of siteIds) {
+      await this.checkResultRepository.delete({ siteId: id });
+      await this.sitesRepository.delete(id);
+    }
+    return siteIds.length;
   }
 
   async exportSites(siteIds?: string[]): Promise<any> {
@@ -270,11 +305,11 @@ export class SiteService implements OnModuleInit {
   }
 
   async getHistory(id: string, hours: number = 24): Promise<SiteCheckResult[]> {
-    await this.findOne(id);
+    const site = await this.findOne(id);
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);
     return this.checkResultRepository
       .createQueryBuilder('r')
-      .where('r.siteId = :id', { id })
+      .where('r.domain = :domain', { domain: site.domain })
       .andWhere('r.checkedAt >= :since', { since })
       .orderBy('r.checkedAt', 'DESC')
       .getMany();
