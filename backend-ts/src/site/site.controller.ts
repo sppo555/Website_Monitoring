@@ -99,8 +99,17 @@ export class SiteController {
   @UseGuards(RolesGuard)
   @Roles('admin', 'onlyedit')
   async update(@Request() req: any, @Param('id') id: string, @Body() siteDto: SiteDto) {
+    const oldSite = await this.siteService.findOne(id);
+    const oldDomain = oldSite.domain;
     const result = await this.siteService.update(id, siteDto);
     await this.auditService.log(req.user.id, req.user.username, 'update_site', result.domain);
+    // 域名變更後觸發即時檢查
+    if (result.domain !== oldDomain) {
+      const site = await this.siteService.findOne(result.id);
+      this.checkerService.checkSingleSite(site).catch(err =>
+        this.logger.error(`即時檢查失敗 ${result.domain}: ${err.message}`),
+      );
+    }
     return result;
   }
 

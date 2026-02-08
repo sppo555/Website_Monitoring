@@ -4,6 +4,38 @@
 
 ---
 
+## v4.1 — 域名改名清除歷史 + 全選 + UI 優化 + 群組批量修復
+
+> 2026-02-08
+
+### 域名改名清除歷史紀錄
+
+- **SiteService.update()**：偵測域名變更時，自動刪除該站所有 `SiteCheckResult` 紀錄
+- **重置計數器**：`consecutiveFailures = 0`、`lastHttpCheck / lastTlsCheck / lastWhoisCheck = null`
+- **即時檢查**：域名變更後觸發 `checkSingleSite` 重新執行完整檢查
+- **域名驗證**：`update()` 也加入 `stripProtocol` + `validateDomainFormat`
+
+### 全選功能
+
+- **全選 checkbox**：工具列新增「全選」打勾，可一鍵選取/取消當前顯示的所有域名
+- **智慧全選**：只影響搜尋過濾後的可見域名，不影響其他已選取的域名
+
+### UI 優化
+
+- **checkbox 放大**：域名卡片的勾選框從 16px → 22px，更容易點擊
+- **accent-color**：checkbox 使用主題色 `#4361ee`
+
+### 批量編輯群組修復
+
+- **bulkUpdate() 逐筆 save**：TypeORM `save(array)` 對 ManyToMany 不正確，改為逐筆 `save(site)` 確保 join table 正確更新
+- **陣列拷貝**：每個 site 指派 `[...resolvedGroups]` 避免共用參考
+
+### 文件清理
+
+- **刪除 DEVELOPER_NOTES.md**
+
+---
+
 ## v4.0 — 國際化 + 域名驗證 + 即時檢查 + 批量群組編輯
 
 > 2026-02-08

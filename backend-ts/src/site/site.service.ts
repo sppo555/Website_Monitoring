@@ -181,11 +181,38 @@ export class SiteService implements OnModuleInit {
 
   async update(id: string, siteDto: SiteDto): Promise<Site> {
     const site = await this.findOne(id);
+    const oldDomain = site.domain;
+
+    // 域名格式處理與驗證
+    if (siteDto.domain) {
+      siteDto.domain = this.stripProtocol(siteDto.domain).trim();
+      this.validateDomainFormat(siteDto.domain);
+      // 檢查新域名是否已被其他站點使用
+      if (siteDto.domain !== oldDomain) {
+        const existing = await this.sitesRepository.findOne({ where: { domain: siteDto.domain } });
+        if (existing && existing.id !== id) {
+          throw new BadRequestException(`域名 ${siteDto.domain} 已存在`);
+        }
+      }
+    }
+
     const { groupIds, ...rest } = siteDto;
     Object.assign(site, rest);
     if (groupIds !== undefined) {
       site.groups = await this.resolveGroups(groupIds);
     }
+
+    // 域名變更：清除所有舊檢查紀錄 + 重置計數器
+    const domainChanged = siteDto.domain && siteDto.domain !== oldDomain;
+    if (domainChanged) {
+      await this.checkResultRepository.delete({ siteId: id });
+      site.consecutiveFailures = 0;
+      site.lastHttpCheck = null;
+      site.lastTlsCheck = null;
+      site.lastWhoisCheck = null;
+      this.logger.log(`域名已變更: ${oldDomain} → ${siteDto.domain}，已清除歷史紀錄`);
+    }
+
     await this.sitesRepository.save(site);
     return this.findOne(id);
   }
@@ -196,14 +223,15 @@ export class SiteService implements OnModuleInit {
       throw new BadRequestException('siteIds is required');
     }
     const sites = await this.sitesRepository.find({ where: { id: In(siteIds) }, relations: ['groups'] });
-    const groups = groupIds !== undefined ? await this.resolveGroups(groupIds) : undefined;
+    const resolvedGroups = groupIds !== undefined ? await this.resolveGroups(groupIds) : undefined;
+    // 逐筆 save 確保 ManyToMany join table 正確更新
     for (const site of sites) {
       Object.assign(site, updates);
-      if (groups !== undefined) {
-        site.groups = groups;
+      if (resolvedGroups !== undefined) {
+        site.groups = [...resolvedGroups];
       }
+      await this.sitesRepository.save(site);
     }
-    await this.sitesRepository.save(sites);
     return sites;
   }
 

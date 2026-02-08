@@ -26,6 +26,10 @@
       <div class="toolbar-actions">
         <input v-model="searchQuery" class="search-input" :placeholder="t('site.searchPlaceholder')" />
         <template v-if="userCanEdit">
+          <label class="select-all-label">
+            <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="select-all-checkbox" />
+            {{ t('site.selectAll') }}
+          </label>
           <button v-if="selectedIds.length > 0" class="btn btn-warning" @click="showBulkEdit = true">{{ t('site.bulkEdit') }} ({{ selectedIds.length }})</button>
           <button class="btn btn-secondary" @click="showBatchModal = true">{{ t('site.batchImport') }}</button>
           <button class="btn btn-primary" @click="openAddModal">{{ t('site.addSite') }}</button>
@@ -196,6 +200,21 @@ function toggleSelect(id: string) {
   else selectedIds.value.push(id);
 }
 
+const isAllSelected = computed(() => {
+  return searchedSites.value.length > 0 && searchedSites.value.every(s => selectedIds.value.includes(s.id));
+});
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    const visibleIds = new Set(searchedSites.value.map(s => s.id));
+    selectedIds.value = selectedIds.value.filter(id => !visibleIds.has(id));
+  } else {
+    const current = new Set(selectedIds.value);
+    for (const s of searchedSites.value) current.add(s.id);
+    selectedIds.value = [...current];
+  }
+}
+
 async function fetchGroups() {
   try { const { data } = await axios.get<GroupItem[]>(GROUP_API); groups.value = data; } catch (err) { console.error('獲取群組失敗:', err); }
 }
@@ -296,7 +315,9 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 .card-url { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
 .card-url a { color: #1a1a2e; text-decoration: none; font-weight: 600; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-url a:hover { color: #4361ee; }
-.site-checkbox { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.site-checkbox { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; accent-color: #4361ee; }
+.select-all-label { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; color: #555; cursor: pointer; white-space: nowrap; }
+.select-all-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #4361ee; }
 .card-badges { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
 .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .dot-green { background: #2ecc71; }
