@@ -46,6 +46,8 @@ export default {
   'site.searchPlaceholder': '🔍 Search domain...',
   'site.bulkEdit': 'Bulk Edit',
   'site.batchImport': 'JSON Batch Import',
+  'site.export': 'JSON Export',
+  'site.exportSelected': 'Export Selected ({count})',
   'site.selectAll': 'Select All',
   'site.addSite': '+ Add Site',
   'site.empty': 'No monitored sites yet',

@@ -107,7 +107,7 @@ const exampleJson = `[
 const VALID_FIELDS = new Set([
   'domain', 'checkHttp', 'checkHttps', 'checkTls', 'checkWhois',
   'httpCheckIntervalSeconds', 'tlsCheckIntervalDays', 'domainCheckIntervalDays',
-  'failureThreshold', 'groupIds',
+  'failureThreshold', 'groupIds', 'groups',
 ]);
 
 function validateSites(sites: any[]): string | null {

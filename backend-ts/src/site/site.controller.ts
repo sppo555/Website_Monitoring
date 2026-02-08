@@ -66,6 +66,14 @@ export class SiteController {
     return this.siteService.findAll();
   }
 
+  @Get('export')
+  async exportSites(@Request() req: any, @Query('ids') ids?: string) {
+    const siteIds = ids ? ids.split(',').filter(Boolean) : undefined;
+    const result = await this.siteService.exportSites(siteIds);
+    await this.auditService.log(req.user.id, req.user.username, 'export_sites', `${result.count} sites`);
+    return result;
+  }
+
   @Get(':id/history')
   getHistory(@Param('id') id: string, @Query('range') range?: string) {
     const hours = this.parseRange(range || '24h');

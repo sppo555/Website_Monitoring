@@ -235,6 +235,32 @@ export class SiteService implements OnModuleInit {
     return sites;
   }
 
+  async exportSites(siteIds?: string[]): Promise<any> {
+    let sites: Site[];
+    if (siteIds && siteIds.length > 0) {
+      sites = await this.sitesRepository.find({ where: { id: In(siteIds) }, relations: ['groups'] });
+    } else {
+      sites = await this.sitesRepository.find({ relations: ['groups'] });
+    }
+    const exportData = sites.map(site => ({
+      domain: site.domain,
+      checkHttp: site.checkHttp,
+      checkHttps: site.checkHttps,
+      checkTls: site.checkTls,
+      checkWhois: site.checkWhois,
+      httpCheckIntervalSeconds: site.httpCheckIntervalSeconds,
+      tlsCheckIntervalDays: site.tlsCheckIntervalDays,
+      domainCheckIntervalDays: site.domainCheckIntervalDays,
+      failureThreshold: site.failureThreshold,
+      groups: (site.groups || []).map(g => g.name),
+    }));
+    return {
+      exportedAt: new Date().toISOString(),
+      count: exportData.length,
+      sites: exportData,
+    };
+  }
+
   async updateStatus(id: string, status: 'active' | 'paused'): Promise<Site> {
     if (status !== 'active' && status !== 'paused') {
         throw new BadRequestException('Status must be active or paused'); 

@@ -46,6 +46,8 @@ export default {
   'site.searchPlaceholder': '🔍 搜尋域名...',
   'site.bulkEdit': '批量修改',
   'site.batchImport': 'JSON 批量匯入',
+  'site.export': 'JSON 匯出',
+  'site.exportSelected': '匯出勾選 ({count})',
   'site.selectAll': '全選',
   'site.addSite': '+ 新增網站',
   'site.empty': '目前沒有監控中的網站',

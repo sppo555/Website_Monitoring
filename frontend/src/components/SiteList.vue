@@ -31,6 +31,8 @@
             {{ t('site.selectAll') }}
           </label>
           <button v-if="selectedIds.length > 0" class="btn btn-warning" @click="showBulkEdit = true">{{ t('site.bulkEdit') }} ({{ selectedIds.length }})</button>
+          <button v-if="selectedIds.length > 0" class="btn btn-export" @click="exportSites(selectedIds)">{{ t('site.exportSelected', { count: selectedIds.length }) }}</button>
+          <button v-else class="btn btn-export" @click="exportSites()" :disabled="sites.length === 0">{{ t('site.export') }}</button>
           <button class="btn btn-secondary" @click="showBatchModal = true">{{ t('site.batchImport') }}</button>
           <button class="btn btn-primary" @click="openAddModal">{{ t('site.addSite') }}</button>
         </template>
@@ -266,6 +268,22 @@ async function deleteSite(site: Site) {
   try { await axios.delete(`${API_BASE}/${site.id}`); await fetchSites(); } catch (err) { console.error('刪除失敗:', err); }
 }
 
+async function exportSites(ids?: string[]) {
+  try {
+    const params = ids && ids.length > 0 ? `?ids=${ids.join(',')}` : '';
+    const { data } = await axios.get(`${API_BASE}/export${params}`);
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    a.href = url;
+    a.download = `sites-export-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) { console.error('匯出失敗:', err); alert('匯出失敗'); }
+}
+
 function formatTime(dateStr: string): string { return new Date(dateStr).toLocaleString(getDateLocale()); }
 function getHealthClass(site: Site) { if (site.status === 'paused') return 'dot-gray'; if (!site.latestResult) return 'dot-gray'; return site.latestResult.isHealthy ? 'dot-green' : 'dot-red'; }
 function getHttpClass(site: Site) { const s = site.latestResult?.httpStatus; if (!s) return ''; if (s < 300) return 'text-green'; if (s < 400) return 'text-yellow'; return 'text-red'; }
@@ -304,6 +322,9 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 .btn-secondary:hover { background: #d8d8d8; }
 .btn-warning { background: #f39c12; color: #fff; }
 .btn-warning:hover { background: #e08e0b; }
+.btn-export { background: #17a2b8; color: #fff; }
+.btn-export:hover { background: #138496; }
+.btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
 .loading, .empty-state { text-align: center; padding: 60px 20px; color: #888; font-size: 1.1rem; }
 .empty-state p { margin: 4px 0; }
 .site-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
