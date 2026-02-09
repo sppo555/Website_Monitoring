@@ -4,6 +4,79 @@
 
 ---
 
+## v4.5 — 群組 Tab 權限修正
+
+> 2026-02-09
+
+### 群組 Tab 權限過濾
+
+- **visibleGroups computed**：非 admin/allread 角色只顯示被指派的群組 tab，不再看到無權限的群組
+- **countByGroup 修正**：群組計數改為基於 `visibleSites`，不再顯示無法存取的域名數量
+- **效果**：`onlyedit` / `onlyread` 角色只看到 `全部` + 自己被指派的群組 tab，計數也只反映可見域名
+
+---
+
+## v4.4 — 搜尋篩選器 + Telegram Group Topics 支援
+
+> 2026-02-09
+
+### 搜尋篩選器
+
+- **篩選按鈕**：工具列新增「篩選」按鈕，展開/收合篩選列
+- **監控項目篩選**：可多選勾選 HTTP / HTTPS / TLS / WHOIS，篩選出有啟用該監控的域名
+- **狀態篩選**：可勾選「監控中」/「已暫停」篩選域名狀態
+- **篩選邏輯**：監控項目為 AND（同時滿足），狀態為 OR（勾兩個等於全部）
+- **清除按鈕**：一鍵重置所有篩選條件
+
+### Telegram Group Topics 支援
+
+- **Chat ID 格式**：支援 `chatId:topicId` 格式（例：`-1003758002772:646`）
+- **parseChatId()**：後端自動解析冒號格式，提取 `chat_id` 和 `message_thread_id`
+- **全部告警支援**：到期告警、連續失敗告警、測試訊息三處都已支援 Group Topics
+- **向下相容**：不含冒號的原格式（純 chat_id）照常運作
+- **前端提示**：Chat ID 欄位新增 placeholder 和提示文字說明格式
+
+---
+
+## v4.3 — 批量刪除 + 群組編輯模式 + 歷史紀錄綁定域名
+
+> 2026-02-09
+
+### 批量刪除
+
+- **後端 API**：`DELETE /api/sites/bulk` 接收 `siteIds` 陣列，批量刪除域名及其檢查紀錄
+- **前端按鈕**：勾選域名後顯示紅色「批量刪除」按鈕（僅 admin 可見），附 confirm 確認
+- **審計紀錄**：刪除操作記錄到 audit log
+
+### 群組編輯模式選擇
+
+- **groupMode 欄位**：`BulkUpdateDto` 新增 `groupMode: 'replace' | 'add'`
+- **覆蓋模式**（replace，預設）：取代現有群組
+- **新增模式**（add）：保留現有群組，只追加新的
+- **前端 UI**：BulkEditModal 勾選「群組」後顯示 radio 選擇器
+
+### 歷史紀錄綁定域名字串
+
+- **domain 欄位**：`SiteCheckResult` 新增 `domain` 欄位（有索引），每次檢查時寫入 `site.domain`
+- **getHistory() 改寫**：歷史查詢改為 `WHERE domain = :domain`（不再用 siteId）
+- **改名不刪紀錄**：`update()` 域名變更時不再刪除歷史，只重置計數器
+- **自動 backfill**：啟動時自動為舊紀錄補填 domain 欄位
+- **效果**：域名改回原名後可看到之前的歷史紀錄
+
+---
+
+## v4.2 — JSON 批量匯出
+
+> 2026-02-08
+
+### JSON 匯出
+
+- **後端 API**：`GET /api/sites/export` 匯出全部或指定域名的設定（含群組資訊）
+- **前端按鈕**：有勾選顯示「匯出勾選 (N)」，無勾選顯示「JSON 匯出」
+- **JSON 格式**：與批量匯入格式相容，匯出後可直接修改再匯入
+
+---
+
 ## v4.1 — 域名改名清除歷史 + 全選 + UI 優化 + 群組批量修復
 
 > 2026-02-08
@@ -231,7 +304,7 @@
 
 ---
 
-## 完整 API 列表（截至 v4.0）
+## 完整 API 列表（截至 v4.5）
 
 ### Sites API
 
@@ -240,11 +313,13 @@
 | `POST` | `/api/sites` | Admin/Editor | 新增監控域名（驗證格式、擋掉重複、觸發即時檢查） |
 | `POST` | `/api/sites/batch` | Admin/Editor | 批量匯入域名（驗證格式、擋掉重複、觸發即時檢查） |
 | `GET` | `/api/sites` | JWT | 取得所有域名（含群組 + 最新檢查結果） |
+| `GET` | `/api/sites/export` | JWT | 匯出全部或指定域名設定（v4.2 新增） |
 | `GET` | `/api/sites/:id` | JWT | 取得單一域名 |
-| `GET` | `/api/sites/:id/history?range=` | JWT | 取得檢查歷史（支援 1h/12h/24h/1d/7d/14d） |
-| `PUT` | `/api/sites/bulk` | Admin/Editor | 批量修改多個域名監控設定（含群組） |
-| `PUT` | `/api/sites/:id` | Admin/Editor | 更新域名設定 |
+| `GET` | `/api/sites/:id/history?range=` | JWT | 取得檢查歷史（按域名字串查詢，支援 1h/12h/24h/1d/7d/14d） |
+| `PUT` | `/api/sites/bulk` | Admin/Editor | 批量修改多個域名監控設定（含群組，支援 replace/add 模式） |
+| `PUT` | `/api/sites/:id` | Admin/Editor | 更新域名設定（改名不刪歷史） |
 | `PUT` | `/api/sites/:id/status/:status` | Admin/Editor | 切換監控狀態（active/paused） |
+| `DELETE` | `/api/sites/bulk` | Admin | 批量刪除域名及其檢查紀錄（v4.3 新增） |
 | `DELETE` | `/api/sites/:id` | Admin | 刪除域名 |
 
 ### Groups API

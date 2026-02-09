@@ -24,7 +24,13 @@ A lightweight, full-stack TypeScript website monitoring system (NestJS + Vue 3) 
 | **Independent Toggles** | Each domain can independently enable/disable HTTP, HTTPS, TLS, WHOIS |
 | **Domain Validation** | RFC 952/1123 compliant: only `a-z`, `0-9`, `-`, `.` allowed; auto-strips `http://`/`https://` prefix; rejects duplicates |
 | **JSON Batch Import** | Import multiple domains at once via JSON, with group assignment and full validation |
+| **Search Filters** | Filter domains by monitoring type (HTTP/HTTPS/TLS/WHOIS) and status (Active/Paused) with multi-select checkboxes |
+| **JSON Export** | Export all or selected domain configurations as JSON (compatible with batch import format) |
+| **Bulk Delete** | Select multiple domains and delete them in bulk (admin only), including associated check results |
+| **Bulk Group Mode** | Bulk edit groups with Replace (overwrite) or Add (append) mode selection |
+| **Domain-Based History** | Check history is tied to domain string, not site ID — renaming and renaming back restores history |
 | **Telegram Alerts** | Auto-send Telegram notifications for TLS/domain expiry or HTTP failures; settings stored in DB |
+| **TG Group Topics** | Telegram Chat ID supports `chatId:topicId` format for Group Topics (e.g. `-1003758002772:646`) |
 | **Failure Count Alert** | Only trigger alert after configurable consecutive HTTP failures |
 | **Independent Intervals** | HTTP/HTTPS in seconds (min 60s), TLS/WHOIS in days (min 1 day) |
 | **Batch Processing** | Checks run in batches of 5, with 2s delay between batches |
@@ -35,6 +41,7 @@ A lightweight, full-stack TypeScript website monitoring system (NestJS + Vue 3) 
 | **Log Retention Management** | Admin can configure auto-cleanup of audit logs and check results (daily cron, configurable retention days) |
 | **i18n (Internationalization)** | Full English and Traditional Chinese support; language toggle persisted in localStorage |
 | **Separate Pages** | Dashboard, User Management, Audit Logs, Telegram Settings, System Settings each on their own page with nav bar |
+| **Group Tab Permissions** | Non-admin users only see group tabs they have access to; counts reflect visible domains only |
 | **Data Persistence** | All data stored in PostgreSQL with Docker named volumes — survives `docker compose down && up` |
 | **Timezone Handling** | Backend stores UTC; frontend displays browser's local timezone automatically |
 
@@ -128,9 +135,26 @@ Type a group name and press `+` to create a new group. Domains can belong to **m
 Select multiple domains via checkboxes, then click "Bulk Edit". You can modify:
 - HTTP / HTTPS / TLS / WHOIS toggles
 - HTTP interval, failure threshold
-- **Group assignment** (set all selected domains to the same groups)
+- **Group assignment** with mode selection:
+  - **Replace** (default) — overwrite existing groups
+  - **Add** — keep existing groups and append new ones
 
 Only checked fields are applied; unchecked fields keep their original values.
+
+### 3.1 Bulk Delete
+
+Select domains and click "Bulk Delete" (admin only). All selected domains and their check history will be permanently removed.
+
+### 3.2 JSON Export
+
+Click "JSON Export" to download all domain configurations. If domains are selected, click "Export Selected (N)" to export only those. The exported JSON is compatible with the batch import format.
+
+### 3.3 Search Filters
+
+Click the "Filter" button next to the search bar to expand filter options:
+- **Monitoring type**: HTTP / HTTPS / TLS / WHOIS (AND logic — all checked must be enabled)
+- **Status**: Active / Paused (OR logic — checking both shows all)
+- Click "Clear" to reset all filters
 
 ### 4. JSON Batch Import
 
@@ -192,7 +216,7 @@ Each domain card has a 📊 button. Click it to view check results with selectab
 Navigate to the "Telegram Settings" page via the nav bar:
 
 1. Enter **Bot Token** (from [@BotFather](https://t.me/BotFather))
-2. Enter **Chat ID** (personal or group/channel ID)
+2. Enter **Chat ID** (personal or group/channel ID). For **Group Topics**, use format `chatId:topicId` (e.g. `-1003758002772:646`)
 3. Set **TLS alert days** (default 14) and **Domain alert days** (default 30)
 4. Check "Enable Telegram Alerts"
 5. Click "Save Settings"
@@ -251,10 +275,12 @@ To prevent overload when monitoring hundreds of domains:
 | `POST` | `/api/sites/batch` | Admin/Editor | Batch import domains (validates format, rejects duplicates, triggers immediate checks) |
 | `GET` | `/api/sites` | JWT | Get all domains (with groups + latest result) |
 | `GET` | `/api/sites/:id` | JWT | Get a single domain |
-| `GET` | `/api/sites/:id/history?range=` | JWT | Get check history (1h/12h/24h/1d/7d/14d) |
-| `PUT` | `/api/sites/bulk` | Admin/Editor | Bulk update monitoring settings (including groups) |
-| `PUT` | `/api/sites/:id` | Admin/Editor | Update domain settings |
+| `GET` | `/api/sites/export` | JWT | Export all or selected domain configs as JSON |
+| `GET` | `/api/sites/:id/history?range=` | JWT | Get check history by domain string (1h/12h/24h/1d/7d/14d) |
+| `PUT` | `/api/sites/bulk` | Admin/Editor | Bulk update settings (groups support replace/add mode) |
+| `PUT` | `/api/sites/:id` | Admin/Editor | Update domain settings (rename preserves history) |
 | `PUT` | `/api/sites/:id/status/:status` | Admin/Editor | Toggle status (active/paused) |
+| `DELETE` | `/api/sites/bulk` | Admin | Bulk delete domains and their check results |
 | `DELETE` | `/api/sites/:id` | Admin | Delete a domain |
 
 ### Groups API

@@ -24,7 +24,13 @@
 | **獨立監控開關** | 每個域名可獨立啟用/關閉 HTTP、HTTPS、TLS、WHOIS 四項監控 |
 | **域名格式驗證** | 符合 RFC 952/1123：僅允許 `a-z`、`0-9`、`-`、`.`；自動去除 `http://`/`https://` 前綴；擋掉重複域名 |
 | **JSON 批量匯入** | 透過 JSON 格式一次匯入多個域名，支援群組指派，含完整格式驗證 |
+| **搜尋篩選器** | 可依監控項目（HTTP/HTTPS/TLS/WHOIS）和狀態（監控中/已暫停）多選篩選域名 |
+| **JSON 匯出** | 匯出全部或勾選域名的設定為 JSON（與批量匯入格式相容） |
+| **批量刪除** | 勾選多個域名一次刪除（僅 admin），同時刪除關聯的檢查紀錄 |
+| **群組編輯模式** | 批量編輯群組時可選擇「覆蓋」或「新增」模式 |
+| **歷史紀錄綁定域名** | 檢查歷史綁定域名字串，改名再改回可恢復歷史紀錄 |
 | **Telegram 告警** | TLS/域名到期或 HTTP 連續失敗時，自動發送 Telegram 通知；設定存入 DB |
+| **TG Group Topics** | Telegram Chat ID 支援 `chatId:topicId` 格式（例：`-1003758002772:646`） |
 | **失敗計數告警** | HTTP/HTTPS 連續失敗達到設定次數後才觸發告警（可自訂） |
 | **獨立檢查間隔** | HTTP/HTTPS 按秒設定（最低 60s），TLS/WHOIS 按天設定（最低 1 天） |
 | **批量分批處理** | 檢查時每 5 個域名一批，批次間延遲 2 秒，避免瞬間大量請求 |
@@ -35,6 +41,7 @@
 | **紀錄保留管理** | admin 可設定操作紀錄和監控紀錄的保留天數，打勾啟用後每日排程自動清理過期資料 |
 | **國際化（i18n）** | 支援英文與繁體中文完整切換，語言偏好存入 localStorage |
 | **獨立頁面** | 儀表板、使用者管理、操作紀錄、Telegram 設定、系統設定 各為獨立頁面，透過導航列切換 |
+| **群組 Tab 權限** | 非 admin 使用者只看到有權限的群組 tab，計數只反映可見域名 |
 | **資料持久化** | 所有資料存入 PostgreSQL，Docker named volume 持久化，`docker compose down && up` 資料不遺失 |
 | **時區處理** | 後端存 UTC，前端依瀏覽器時區自動顯示本地時間 |
 
@@ -128,9 +135,26 @@ docker compose down
 勾選多個域名，點擊「批量修改」按鈕。可修改：
 - HTTP / HTTPS / TLS / WHOIS 開關
 - HTTP 間隔、失敗門檻
-- **所屬群組**（將所有選取的域名統一指派到相同群組）
+- **所屬群組**，可選擇模式：
+  - **覆蓋**（預設）— 取代現有群組
+  - **新增** — 保留現有群組，只追加新的
 
 僅勾選的項目會被修改，未勾選的保持原值。
+
+### 3.1 批量刪除
+
+勾選域名後點擊「批量刪除」（僅 admin 可見）。所有選取的域名及其檢查紀錄將被永久刪除。
+
+### 3.2 JSON 匯出
+
+點擊「JSON 匯出」下載所有域名設定。若有勾選域名，點擊「匯出勾選 (N)」只匯出勾選的。匯出的 JSON 格式與批量匯入相容。
+
+### 3.3 搜尋篩選器
+
+點擊搜尋欄旁的「篩選」按鈕展開篩選列：
+- **監控項目**：HTTP / HTTPS / TLS / WHOIS（AND 邏輯 — 勾選的都要啟用）
+- **狀態**：監控中 / 已暫停（OR 邏輯 — 勾兩個等於全部）
+- 點擊「清除」重置所有篩選條件
 
 ### 4. JSON 批量匯入
 
@@ -192,7 +216,7 @@ docker compose down
 透過導航列進入「Telegram 設定」頁面：
 
 1. 填入 **Bot Token**（從 [@BotFather](https://t.me/BotFather) 取得）
-2. 填入 **Chat ID**（個人或群組/頻道 ID）
+2. 填入 **Chat ID**（個人或群組/頻道 ID）。支援 **Group Topics** 格式：`chatId:topicId`（例：`-1003758002772:646`）
 3. 設定 **TLS 告警天數**（預設 14 天）和**域名告警天數**（預設 30 天）
 4. 勾選「啟用 Telegram 告警」
 5. 點擊「儲存設定」
@@ -251,10 +275,12 @@ docker compose down
 | `POST` | `/api/sites/batch` | Admin/Editor | 批量匯入域名（驗證格式、擋掉重複、觸發即時檢查） |
 | `GET` | `/api/sites` | JWT | 取得所有域名（含群組 + 最新檢查結果） |
 | `GET` | `/api/sites/:id` | JWT | 取得單一域名 |
-| `GET` | `/api/sites/:id/history?range=` | JWT | 取得檢查歷史（支援 1h/12h/24h/1d/7d/14d） |
-| `PUT` | `/api/sites/bulk` | Admin/Editor | 批量修改多個域名監控設定（含群組） |
-| `PUT` | `/api/sites/:id` | Admin/Editor | 更新域名設定 |
+| `GET` | `/api/sites/export` | JWT | 匯出全部或指定域名設定為 JSON |
+| `GET` | `/api/sites/:id/history?range=` | JWT | 取得檢查歷史（按域名字串查詢，支援 1h/12h/24h/1d/7d/14d） |
+| `PUT` | `/api/sites/bulk` | Admin/Editor | 批量修改多個域名監控設定（群組支援 replace/add 模式） |
+| `PUT` | `/api/sites/:id` | Admin/Editor | 更新域名設定（改名不刪歷史） |
 | `PUT` | `/api/sites/:id/status/:status` | Admin/Editor | 切換監控狀態（active/paused） |
+| `DELETE` | `/api/sites/bulk` | Admin | 批量刪除域名及其檢查紀錄 |
 | `DELETE` | `/api/sites/:id` | Admin | 刪除域名 |
 
 ### Groups API
