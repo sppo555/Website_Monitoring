@@ -28,6 +28,14 @@ export class AlertService {
     private configRepo: Repository<AlertConfig>,
   ) {}
 
+  private parseChatId(raw: string): { chat_id: string; message_thread_id?: number } {
+    const parts = raw.split(':');
+    if (parts.length === 2 && parts[1].trim()) {
+      return { chat_id: parts[0].trim(), message_thread_id: parseInt(parts[1].trim(), 10) };
+    }
+    return { chat_id: raw.trim() };
+  }
+
   async getConfig(): Promise<AlertConfig> {
     let config = await this.configRepo.findOne({ where: {} });
     if (!config) {
@@ -84,11 +92,13 @@ export class AlertService {
     message += `📋 共 ${items.length} 項需要關注`;
 
     const url = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`;
+    const { chat_id, message_thread_id } = this.parseChatId(config.telegramChatId);
     try {
       await axios.post(url, {
-        chat_id: config.telegramChatId,
+        chat_id,
         text: message,
         parse_mode: 'HTML',
+        ...(message_thread_id ? { message_thread_id } : {}),
       });
       this.logger.log(`Telegram 告警已發送，共 ${items.length} 項。`);
     } catch (err: any) {
@@ -112,11 +122,13 @@ export class AlertService {
     message += `⚠️ 共 ${items.length} 個域名連續失敗`;
 
     const url = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`;
+    const { chat_id, message_thread_id } = this.parseChatId(config.telegramChatId);
     try {
       await axios.post(url, {
-        chat_id: config.telegramChatId,
+        chat_id,
         text: message,
         parse_mode: 'HTML',
+        ...(message_thread_id ? { message_thread_id } : {}),
       });
       this.logger.log(`Telegram 連續失敗告警已發送，共 ${items.length} 項。`);
     } catch (err: any) {
@@ -134,11 +146,13 @@ export class AlertService {
       new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' });
 
     const url = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage`;
+    const { chat_id, message_thread_id } = this.parseChatId(config.telegramChatId);
     try {
       await axios.post(url, {
-        chat_id: config.telegramChatId,
+        chat_id,
         text: testMsg,
         parse_mode: 'HTML',
+        ...(message_thread_id ? { message_thread_id } : {}),
       });
       return { success: true, message: '測試訊息發送成功' };
     } catch (err: any) {

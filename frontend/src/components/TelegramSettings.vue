@@ -23,8 +23,9 @@
             <input
               v-model="config.telegramChatId"
               type="text"
-              placeholder="-1001234567890"
+              placeholder="-1001234567890 或 -1001234567890:123"
             />
+            <span class="hint">{{ t('tg.chatIdHint') }}</span>
           </div>
         </div>
 

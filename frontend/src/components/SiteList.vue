@@ -25,6 +25,7 @@
       </h2>
       <div class="toolbar-actions">
         <input v-model="searchQuery" class="search-input" :placeholder="t('site.searchPlaceholder')" />
+        <button class="btn-filter-toggle" :class="{ active: showFilters }" @click="showFilters = !showFilters" :title="t('site.filterTitle')">{{ t('site.filter') }}</button>
         <template v-if="userCanEdit">
           <label class="select-all-label">
             <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" class="select-all-checkbox" />
@@ -38,6 +39,18 @@
           <button class="btn btn-primary" @click="openAddModal">{{ t('site.addSite') }}</button>
         </template>
       </div>
+    </div>
+
+    <div v-if="showFilters" class="filter-bar">
+      <span class="filter-label">{{ t('site.filterLabel') }}</span>
+      <label class="filter-cb"><input type="checkbox" v-model="filters.http" /> HTTP</label>
+      <label class="filter-cb"><input type="checkbox" v-model="filters.https" /> HTTPS</label>
+      <label class="filter-cb"><input type="checkbox" v-model="filters.tls" /> TLS</label>
+      <label class="filter-cb"><input type="checkbox" v-model="filters.whois" /> WHOIS</label>
+      <span class="filter-sep">|</span>
+      <label class="filter-cb"><input type="checkbox" v-model="filters.active" /> {{ t('site.active') }}</label>
+      <label class="filter-cb"><input type="checkbox" v-model="filters.paused" /> {{ t('site.paused') }}</label>
+      <button class="btn-filter-clear" @click="clearFilters">{{ t('site.filterClear') }}</button>
     </div>
 
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
@@ -114,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import SiteFormModal from './SiteFormModal.vue';
 import BatchImportModal from './BatchImportModal.vue';
@@ -155,7 +168,18 @@ const selectedGroupId = ref<string | null>(null);
 const newGroupName = ref('');
 const historySite = ref<Site | null>(null);
 const searchQuery = ref('');
+const showFilters = ref(false);
+const filters = reactive({
+  http: false, https: false, tls: false, whois: false,
+  active: false, paused: false,
+});
 const selectedIds = ref<string[]>([]);
+
+function clearFilters() {
+  filters.http = false; filters.https = false; filters.tls = false; filters.whois = false;
+  filters.active = false; filters.paused = false;
+}
+const hasActiveFilters = computed(() => filters.http || filters.https || filters.tls || filters.whois || filters.active || filters.paused);
 const formModalRef = ref<any>(null);
 let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -172,9 +196,24 @@ const filteredSites = computed(() => {
 });
 
 const searchedSites = computed(() => {
+  let list = filteredSites.value;
   const q = searchQuery.value.trim().toLowerCase();
-  if (!q) return filteredSites.value;
-  return filteredSites.value.filter(s => s.domain.toLowerCase().includes(q));
+  if (q) list = list.filter(s => s.domain.toLowerCase().includes(q));
+  if (hasActiveFilters.value) {
+    list = list.filter(s => {
+      if (filters.http && !s.checkHttp) return false;
+      if (filters.https && !s.checkHttps) return false;
+      if (filters.tls && !(s.checkTls || s.checkHttps)) return false;
+      if (filters.whois && !s.checkWhois) return false;
+      const statusFilter = filters.active || filters.paused;
+      if (statusFilter) {
+        if (filters.active && !filters.paused && s.status !== 'active') return false;
+        if (filters.paused && !filters.active && s.status !== 'paused') return false;
+      }
+      return true;
+    });
+  }
+  return list;
 });
 
 const editingFormData = computed(() => {
@@ -337,6 +376,16 @@ onUnmounted(() => { if (refreshTimer) clearInterval(refreshTimer); });
 .btn-export:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-danger-bulk { background: #e74c3c; color: #fff; }
 .btn-danger-bulk:hover { background: #c0392b; }
+.btn-filter-toggle { padding: 8px 14px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+.btn-filter-toggle:hover { border-color: #4361ee; color: #4361ee; }
+.btn-filter-toggle.active { background: #4361ee; color: #fff; border-color: #4361ee; }
+.filter-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; margin-bottom: 16px; background: #f8f9fa; border-radius: 10px; border: 1px solid #e8e8e8; }
+.filter-label { font-size: 0.82rem; font-weight: 600; color: #555; white-space: nowrap; }
+.filter-cb { display: flex; align-items: center; gap: 5px; font-size: 0.85rem; color: #444; cursor: pointer; white-space: nowrap; }
+.filter-cb input[type="checkbox"] { width: 16px; height: 16px; accent-color: #4361ee; cursor: pointer; }
+.filter-sep { color: #ccc; font-size: 0.9rem; }
+.btn-filter-clear { padding: 4px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; font-size: 0.78rem; cursor: pointer; color: #888; transition: all 0.2s; }
+.btn-filter-clear:hover { border-color: #e74c3c; color: #e74c3c; }
 .loading, .empty-state { text-align: center; padding: 60px 20px; color: #888; font-size: 1.1rem; }
 .empty-state p { margin: 4px 0; }
 .site-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
