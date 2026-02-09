@@ -5,7 +5,7 @@
     <div class="group-bar">
       <div class="group-tabs">
         <button class="group-tab" :class="{ active: selectedGroupId === null }" @click="selectedGroupId = null">{{ t('common.all') }}</button>
-        <button v-for="g in groups" :key="g.id" class="group-tab" :class="{ active: selectedGroupId === g.id }" @click="selectedGroupId = g.id">
+        <button v-for="g in visibleGroups" :key="g.id" class="group-tab" :class="{ active: selectedGroupId === g.id }" @click="selectedGroupId = g.id">
           {{ g.name }}
           <span class="group-count">{{ countByGroup(g.id) }}</span>
         </button>
@@ -232,8 +232,15 @@ const editingFormData = computed(() => {
   };
 });
 
+const visibleGroups = computed(() => {
+  const role = authState.user?.role;
+  if (role === 'admin' || role === 'allread') return groups.value;
+  const allowed = new Set(authState.user?.assignedGroupIds || []);
+  return groups.value.filter(g => allowed.has(g.id));
+});
+
 function countByGroup(groupId: string): number {
-  return sites.value.filter(s => s.groups?.some(g => g.id === groupId)).length;
+  return visibleSites.value.filter(s => s.groups?.some(g => g.id === groupId)).length;
 }
 
 function toggleSelect(id: string) {
